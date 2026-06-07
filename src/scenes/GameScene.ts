@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { ensureSceneLoaded, SceneKey } from '@/sceneLoader';
 import { Player } from '@/entities/Player';
 import { MapManager } from '@/managers/MapManager';
 import { InputManager } from '@/managers/InputManager';
@@ -144,6 +145,12 @@ export class GameScene extends Phaser.Scene {
     this.buildingBodies = this.physics.add.staticGroup();
     const horizontalYs = [150, 250, 350, 450, 550, 650, 750];
     const verticalXs = [150, 300, 500, 700, 850];
+    const landmarkBounds = district.landmarks.map((lm) => ({
+      left: lm.position.x - lm.size.width / 2,
+      right: lm.position.x + lm.size.width / 2,
+      top: lm.position.y - lm.size.height / 2,
+      bottom: lm.position.y + lm.size.height / 2,
+    }));
 
     for (let i = 0; i < verticalXs.length - 1; i++) {
       for (let j = 0; j < horizontalYs.length - 1; j++) {
@@ -155,12 +162,11 @@ export class GameScene extends Phaser.Scene {
         const cx = (left + right) / 2;
         const cy = (top + bottom) / 2;
         let skip = false;
-        for (const lm of district.landmarks) {
-          const lx = lm.position.x - lm.size.width / 2;
-          const rx = lm.position.x + lm.size.width / 2;
-          const ty = lm.position.y - lm.size.height / 2;
-          const by = lm.position.y + lm.size.height / 2;
-          if (cx > lx && cx < rx && cy > ty && cy < by) { skip = true; break; }
+        for (const bound of landmarkBounds) {
+          if (cx > bound.left && cx < bound.right && cy > bound.top && cy < bound.bottom) {
+            skip = true;
+            break;
+          }
         }
         if (skip) continue;
         const wall = this.add.rectangle(cx, cy, right - left, bottom - top).setVisible(false);
@@ -254,7 +260,7 @@ export class GameScene extends Phaser.Scene {
 
     // HUD
     if (!this.scene.isActive('HUDScene')) {
-      this.scene.launch('HUDScene');
+      void this.loadAndLaunchScene('HUDScene');
     }
 
     // Station exit listener
@@ -272,7 +278,7 @@ export class GameScene extends Phaser.Scene {
       const tabKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.TAB);
       tabKey.on('down', () => {
         if (!this.scene.isActive('FullMapScene')) {
-          this.scene.launch('FullMapScene');
+          void this.loadAndLaunchScene('FullMapScene');
         }
       });
     }
@@ -602,7 +608,7 @@ export class GameScene extends Phaser.Scene {
         if (this.missionManager?.isActive()) {
           this.transitionToStation(this.nearStation.id);
         } else {
-          this.showMissionSelect(this.nearStation);
+          void this.showMissionSelect(this.nearStation);
         }
         this.nearStation = null;
         this.inputManager.resetActionFlag();
@@ -728,6 +734,11 @@ export class GameScene extends Phaser.Scene {
     this.player = null;
   }
 
+  private async loadAndLaunchScene(key: SceneKey, data?: any): Promise<void> {
+    await ensureSceneLoaded(this, key);
+    this.scene.launch(key, data);
+  }
+
   private findNearestStation(): Station | null {
     if (!this.mapManager?.currentDistrict || !this.player) return null;
     let nearest: Station | null = null;
@@ -747,9 +758,11 @@ export class GameScene extends Phaser.Scene {
 
   // === Mission Select ===
 
-  private showMissionSelect(station: Station): void {
+  private async showMissionSelect(station: Station): Promise<void> {
     this.missionMenuOpen = true;
-    this.scene.launch('MissionSelectScene', { stationName: station.name, stationId: station.id });
+
+    // Must await so the scene is registered before we attach the shutdown listener
+    await this.loadAndLaunchScene('MissionSelectScene', { stationName: station.name, stationId: station.id });
 
     this.scene.get('MissionSelectScene')?.events.once('shutdown', () => {
       this.missionMenuOpen = false;
@@ -959,7 +972,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     this.missionManager?.reset();
-    this.scene.launch('MissionCompleteScene', {
+    void this.loadAndLaunchScene('MissionCompleteScene', {
       mission, success,
       rewards: success ? mission.rewards : undefined,
       reason: success ? undefined : 'Mission failed.',
@@ -1053,7 +1066,7 @@ export class GameScene extends Phaser.Scene {
       this.cinematicCamera.screenWipe('left', () => {
         this.cameras.main.setZoom(finalZoom);
         this.scene.sleep('GameScene');
-        this.scene.launch('StationScene', { stationId });
+        void this.loadAndLaunchScene('StationScene', { stationId });
       });
     } else {
       // Fallback zoom transition
@@ -1068,7 +1081,7 @@ export class GameScene extends Phaser.Scene {
       this.cameras.main.once('camerafadeoutcomplete', () => {
         this.cameras.main.setZoom(finalZoom);
         this.scene.sleep('GameScene');
-        this.scene.launch('StationScene', { stationId });
+        void this.loadAndLaunchScene('StationScene', { stationId });
       });
     }
   }
