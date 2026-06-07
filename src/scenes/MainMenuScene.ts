@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { SaveManager } from '@/managers/SaveManager';
 import { AudioManager } from '@/managers/AudioManager';
 import { hexToNum, COLOR_UI_PRIMARY, COLOR_UI_BACKGROUND, COLOR_UI_SURFACE } from '@/graphics/colors';
+import { ensureSceneLoaded, SceneKey } from '@/sceneLoader';
 
 /** Animated subway line — draws itself across the screen */
 interface SubwayLine {
@@ -129,12 +130,12 @@ export class MainMenuScene extends Phaser.Scene {
 
     this.createAnimatedButton(width / 2, buttonY, buttonW, buttonH, 'NEW GAME', 1500, () => {
       saveManager.deleteSave();
-      this.screenTransitionOut(() => this.scene.start('CharacterSelectScene'));
+      this.screenTransitionOut(() => void this.loadAndStartScene('CharacterSelectScene'));
     });
 
     if (saveManager.hasSave()) {
       this.createAnimatedButton(width / 2, buttonY + buttonSpacing, buttonW, buttonH, 'CONTINUE', 1650, () => {
-        this.screenTransitionOut(() => this.scene.start('GameScene'));
+        this.screenTransitionOut(() => void this.loadAndStartScene('GameScene'));
       });
     }
 
@@ -154,6 +155,11 @@ export class MainMenuScene extends Phaser.Scene {
     }).setOrigin(0.5).setDepth(10);
 
     this.cameras.main.fadeIn(300);
+  }
+
+  private async loadAndStartScene(key: SceneKey, data?: any): Promise<void> {
+    await ensureSceneLoaded(this, key);
+    this.scene.start(key, data);
   }
 
   update(_time: number, delta: number): void {

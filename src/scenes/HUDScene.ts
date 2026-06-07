@@ -10,6 +10,7 @@ import { EconomyManager } from '@/managers/EconomyManager';
 import { ProgressionManager } from '@/managers/ProgressionManager';
 import { AudioManager } from '@/managers/AudioManager';
 import { SaveManager } from '@/managers/SaveManager';
+import { ensureSceneLoaded, SceneKey } from '@/sceneLoader';
 import { GameEvents } from '@/types/events.types';
 import { MissionDefinition } from '@/types/game.types';
 import { hexToNum, COLOR_UI_TEXT_DIM } from '@/graphics/colors';
@@ -78,7 +79,7 @@ export class HUDScene extends Phaser.Scene {
     pauseBtn.on('pointerdown', () => {
       audioManager?.playSFX('ui_click');
       if (!this.scene.isActive('PauseScene')) {
-        this.scene.launch('PauseScene');
+        void this.loadAndLaunchScene('PauseScene');
       }
     });
 
@@ -93,7 +94,7 @@ export class HUDScene extends Phaser.Scene {
       this.escKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
       this.escKey.on('down', () => {
         if (!this.scene.isActive('PauseScene')) {
-          this.scene.launch('PauseScene');
+          void this.loadAndLaunchScene('PauseScene');
         }
       });
     }
@@ -177,6 +178,11 @@ export class HUDScene extends Phaser.Scene {
 
     // Ensure HUD renders on top
     this.scene.bringToTop();
+  }
+
+  private async loadAndLaunchScene(key: SceneKey, data?: any): Promise<void> {
+    await ensureSceneLoaded(this, key);
+    this.scene.launch(key, data);
   }
 
   private cleanupHUDScene(): void {

@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { ensureSceneLoaded, SceneKey } from '@/sceneLoader';
 import { SpriteFactory } from '@/graphics/SpriteFactory';
 import { SaveManager } from '@/managers/SaveManager';
 import { InputManager } from '@/managers/InputManager';
@@ -17,7 +18,7 @@ export class BootScene extends Phaser.Scene {
     super({ key: 'BootScene' });
   }
 
-  create(): void {
+  async create(): Promise<void> {
     // Generate all programmatic textures
     SpriteFactory.generateAllTextures(this);
 
@@ -67,6 +68,7 @@ export class BootScene extends Phaser.Scene {
     }
 
     // Transition to MainMenuScene
+    await ensureSceneLoaded(this, 'MainMenuScene');
     this.scene.start('MainMenuScene');
   }
 }

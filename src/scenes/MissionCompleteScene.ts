@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { ensureSceneLoaded, SceneKey } from '@/sceneLoader';
 import { MissionDefinition, MissionRewards } from '@/types/game.types';
 import { hexToNum, COLOR_UI_PRIMARY, COLOR_UI_SURFACE, COLOR_UI_SUCCESS, COLOR_UI_DANGER, COLOR_UI_MONEY, COLOR_UI_XP } from '@/graphics/colors';
 
@@ -89,7 +90,7 @@ export class MissionCompleteScene extends Phaser.Scene {
       }).setOrigin(0.5);
       retryBg.on('pointerdown', () => {
         this.scene.stop('MissionCompleteScene');
-        this.scene.launch('MissionBriefScene', { mission });
+        void this.loadAndLaunchScene('MissionBriefScene', { mission });
       });
 
       const quitBg = this.add.rectangle(width / 2 + 88, btnY, 138, 45, 0x555555);
@@ -99,5 +100,10 @@ export class MissionCompleteScene extends Phaser.Scene {
       }).setOrigin(0.5);
       quitBg.on('pointerdown', () => this.scene.stop('MissionCompleteScene'));
     }
+  }
+
+  private async loadAndLaunchScene(key: SceneKey, data?: any): Promise<void> {
+    await ensureSceneLoaded(this, key);
+    this.scene.launch(key, data);
   }
 }

@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { SaveManager } from '@/managers/SaveManager';
 import { EconomyManager } from '@/managers/EconomyManager';
 import { ProgressionManager } from '@/managers/ProgressionManager';
+import { ensureSceneLoaded, SceneKey } from '@/sceneLoader';
 import {
   hexToNum,
   COLOR_UI_PRIMARY,
@@ -84,7 +85,7 @@ export class CharacterSelectScene extends Phaser.Scene {
       // Epic transition
       this.screenTransitionOut(() => {
         this.game.registry.set('currentDistrict', district);
-        this.scene.start('GameScene');
+        void this.loadAndStartScene('GameScene');
       });
     };
 
@@ -137,6 +138,11 @@ export class CharacterSelectScene extends Phaser.Scene {
     });
 
     this.cameras.main.fadeIn(300);
+  }
+
+  private async loadAndStartScene(key: SceneKey, data?: any): Promise<void> {
+    await ensureSceneLoaded(this, key);
+    this.scene.start(key, data);
   }
 
   private createGridBackground(width: number, height: number): void {

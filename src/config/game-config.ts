@@ -29,6 +29,19 @@ export function createGameConfig(): Phaser.Types.Core.GameConfig {
         debug: false,
       },
     },
+    input: {
+      keyboard: {
+        target: window,
+        capture: [
+          Phaser.Input.Keyboard.KeyCodes.UP,
+          Phaser.Input.Keyboard.KeyCodes.DOWN,
+          Phaser.Input.Keyboard.KeyCodes.LEFT,
+          Phaser.Input.Keyboard.KeyCodes.RIGHT,
+          Phaser.Input.Keyboard.KeyCodes.SPACE,
+          Phaser.Input.Keyboard.KeyCodes.TAB,
+        ],
+      },
+    },
     backgroundColor: '#1a1a2e',
     antialias: true,
     roundPixels: false,

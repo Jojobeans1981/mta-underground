@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { ensureSceneLoaded, SceneKey } from '@/sceneLoader';
 import { MissionManager } from '@/managers/MissionManager';
 import { SaveManager } from '@/managers/SaveManager';
 import { MissionDefinition } from '@/types/game.types';
@@ -75,7 +76,7 @@ export class MissionSelectScene extends Phaser.Scene {
 
         rowBg.on('pointerdown', () => {
           this.scene.stop('MissionSelectScene');
-          this.scene.launch('MissionBriefScene', { mission });
+          void this.loadAndLaunchScene('MissionBriefScene', { mission });
         });
         rowBg.on('pointerover', () => rowBg.setFillStyle(hexToNum('#2a2a5a'), 0.8));
         rowBg.on('pointerout', () => rowBg.setFillStyle(0x1a1a3a, 0.6));
@@ -105,5 +106,10 @@ export class MissionSelectScene extends Phaser.Scene {
     closeBg.on('pointerdown', () => {
       this.scene.stop('MissionSelectScene');
     });
+  }
+
+  private async loadAndLaunchScene(key: SceneKey, data?: any): Promise<void> {
+    await ensureSceneLoaded(this, key);
+    this.scene.launch(key, data);
   }
 }

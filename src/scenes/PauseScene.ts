@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { AudioManager } from '@/managers/AudioManager';
 import { SaveManager } from '@/managers/SaveManager';
+import { ensureSceneLoaded, SceneKey } from '@/sceneLoader';
 import { hexToNum, COLOR_UI_PRIMARY, COLOR_UI_SURFACE, COLOR_UI_BACKGROUND } from '@/graphics/colors';
 
 export class PauseScene extends Phaser.Scene {
@@ -41,14 +42,14 @@ export class PauseScene extends Phaser.Scene {
     // SHOP
     this.createMenuBtn(width / 2, y, 'SHOP', () => {
       this.resumeGame();
-      this.scene.launch('ShopScene');
+      void this.loadAndLaunchScene('ShopScene');
     });
     y += btnSpacing;
 
     // STATS
     this.createMenuBtn(width / 2, y, 'STATS', () => {
       this.resumeGame();
-      this.scene.launch('StatsScene');
+      void this.loadAndLaunchScene('StatsScene');
     });
     y += btnSpacing;
 
@@ -62,7 +63,7 @@ export class PauseScene extends Phaser.Scene {
       this.scene.stop('GameScene');
       this.scene.stop('HUDScene');
       this.scene.stop('PauseScene');
-      this.scene.start('MainMenuScene');
+      void this.loadAndStartScene('MainMenuScene');
     }, true);
 
     // ESC to resume
@@ -92,6 +93,16 @@ export class PauseScene extends Phaser.Scene {
 
     bg.on('pointerover', () => bg.setFillStyle(danger ? 0xaa3333 : hexToNum('#3a3a5a')));
     bg.on('pointerout', () => bg.setFillStyle(danger ? 0x882222 : hexToNum(COLOR_UI_SURFACE)));
+  }
+
+  private async loadAndLaunchScene(key: SceneKey, data?: any): Promise<void> {
+    await ensureSceneLoaded(this, key);
+    this.scene.launch(key, data);
+  }
+
+  private async loadAndStartScene(key: SceneKey, data?: any): Promise<void> {
+    await ensureSceneLoaded(this, key);
+    this.scene.start(key, data);
   }
 
   private toggleSettings(): void {
