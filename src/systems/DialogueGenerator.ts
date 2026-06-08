@@ -1,4 +1,4 @@
-import { AgentPersona, AgentMood, AgentIntent, pick } from '@/data/personas';
+import { AgentPersona, AgentMood, AgentIntent, NeedKind, pick } from '@/data/personas';
 
 export type TimePhase = 'dawn' | 'morning' | 'midday' | 'evening' | 'night';
 export type WeatherKind = 'clear' | 'rain' | 'snow' | 'fog';
@@ -14,6 +14,8 @@ export interface DialogueContext {
   reactToPlayer?: boolean;
   reactToSiren?: boolean;
   reactToGraffiti?: boolean;
+  /** This resident has met the player before (warmer greeting). */
+  knownToPlayer?: boolean;
 }
 
 /**
@@ -113,6 +115,40 @@ export class DialogueGenerator {
     'Somebody\'s been marking up the whole station.',
     'That graffiti wasn\'t there yesterday.',
   ];
+  // Warmer greeting once a resident has met the player before
+  private static readonly KNOWN_GREETINGS: string[] = [
+    'Hey, it\'s you again! Good to see a familiar face.',
+    'Officer! Twice in one day — this neighborhood\'s in good hands.',
+    'Oh, hi again. Nice to see you around.',
+    'Back so soon? I\'m starting to recognize you.',
+  ];
+
+  // --- The Sims: needs ---
+  private static readonly NEED_SEEK: Record<NeedKind, string[]> = {
+    hunger: ['I\'m starving — need to grab a bite.', 'Could murder a slice right now.', 'Food. I need food.'],
+    energy: ['I\'m wiped. Gotta sit down somewhere.', 'So tired I could sleep standing up.', 'Need to rest these feet.'],
+    social: ['Could really use some company.', 'It gets lonely in a crowd, you know?', 'Wish I\'d run into a friend.'],
+    fun: ['I am so bored. Need something to do.', 'Same routine every day. I need a break.', 'Could use a little fun.'],
+  };
+  private static readonly NEED_SATISFIED: Record<NeedKind, string[]> = {
+    hunger: ['Ahh, that hit the spot.', 'Much better with something in my stomach.', 'Finally, a proper meal.'],
+    energy: ['Okay, I can keep going now.', 'That little rest helped.', 'Recharged. Back to it.'],
+    social: ['Good to catch up with someone.', 'A little chat goes a long way.', 'Feeling better after that.'],
+    fun: ['Ha, needed that.', 'Alright, that was a nice break.', 'Good to blow off some steam.'],
+  };
+
+  // --- Witness clues (police questioning) ---
+  private static readonly WITNESS_CLUES: string[] = [
+    'They bolted toward the downtown platform — red jacket, moving fast!',
+    'Yeah, I saw it. They ducked into the station, headed uptown.',
+    'Cut through the crowd that way, didn\'t even swipe a card!',
+    'Couldn\'t miss it — they ran south, knocked over a trash can.',
+  ];
+
+  static knownGreeting(): string { return pick(this.KNOWN_GREETINGS); }
+  static needSeekLine(k: NeedKind): string { return pick(this.NEED_SEEK[k]); }
+  static needSatisfiedLine(k: NeedKind): string { return pick(this.NEED_SATISFIED[k]); }
+  static witnessClue(): string { return pick(this.WITNESS_CLUES); }
 
   // --- Two-agent social exchanges (NPC-to-NPC) ---
   private static readonly GREETINGS: string[] = [
@@ -152,6 +188,9 @@ export class DialogueGenerator {
       return this.fill(pick(this.REACT_GRAFFITI), ctx);
     }
     if (ctx.reactToPlayer && ctx.playerIsPolice && Math.random() < 0.9) {
+      if (ctx.knownToPlayer && Math.random() < 0.7) {
+        return this.fill(this.knownGreeting(), ctx);
+      }
       const bank = ctx.mood === 'nervous' ? this.REACT_POLICE_NERVOUS : this.REACT_POLICE;
       return this.fill(pick(bank), ctx);
     }

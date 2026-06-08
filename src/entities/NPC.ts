@@ -3,7 +3,8 @@ import { Entity } from '@/entities/Entity';
 import { NPCType, BehaviorPattern, NPCDefinition } from '@/types/game.types';
 import { WORLD_WIDTH, WORLD_HEIGHT, NPC_SIZE } from '@/config/constants';
 import { NPC_SPRITE_RES } from '@/graphics/SpriteFactory';
-import { AgentPersona, AgentMood, AgentIntent } from '@/data/personas';
+import { AgentPersona, AgentMood, AgentIntent, Needs, makeNeeds } from '@/data/personas';
+import { Resident } from '@/systems/ResidentRegistry';
 
 export class NPC extends Entity {
   npcType: NPCType;
@@ -43,6 +44,14 @@ export class NPC extends Entity {
 
   // Persistent name tag for recognizable residents
   private nameTag: Phaser.GameObjects.Text | null = null;
+
+  // The Sims layer: needs, persistent identity, witness state
+  needs: Needs = makeNeeds();
+  resident: Resident | null = null;
+  isWitness: boolean = false;
+  /** Called as the NPC is recycled so the system can persist its needs. */
+  onAgentRelease: ((npc: NPC) => void) | null = null;
+  private witnessMark: Phaser.GameObjects.Text | null = null;
 
   constructor(scene: Phaser.Scene, x: number, y: number, definition: NPCDefinition, textureKey: string) {
     super(scene, x, y, textureKey, definition.id + '_' + Math.floor(Math.random() * 100000));
@@ -407,6 +416,42 @@ export class NPC extends Entity {
     return this.nameTag !== null;
   }
 
+  /** Attach a persistent resident — its persona and remembered needs. */
+  bindResident(resident: Resident): void {
+    this.resident = resident;
+    this.persona = resident.persona;
+    this.needs = { ...resident.needs };
+  }
+
+  isKnownToPlayer(): boolean {
+    return this.resident?.metPlayer ?? false;
+  }
+
+  getRelationship(): number {
+    return this.resident?.relationship ?? 0;
+  }
+
+  /** Flag this agent as having witnessed a crime — shows a worried marker. */
+  setWitness(on: boolean): void {
+    this.isWitness = on;
+    if (on) {
+      if (!this.witnessMark && this.scene) {
+        const mark = this.scene.add.text(5, -8, '!', {
+          fontSize: '20px', color: '#ff5252', fontStyle: 'bold',
+        }).setOrigin(0.5, 1).setScale(0.16).setDepth(72).setAlpha(0);
+        this.add(mark);
+        this.witnessMark = mark;
+        this.scene.tweens.add({
+          targets: mark, alpha: 1, y: -10,
+          duration: 400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
+        });
+      }
+    } else {
+      this.witnessMark?.destroy();
+      this.witnessMark = null;
+    }
+  }
+
   getDialogue(): string {
     if (this.dialogueLines.length === 0) return '...';
     return this.dialogueLines[Math.floor(Math.random() * this.dialogueLines.length)];
@@ -456,8 +501,13 @@ export class NPC extends Entity {
     this.onGoalReached = null;
     this.inConversation = false;
     this.conversationTimer = 0;
+    this.resident = null;
+    this.isWitness = false;
+    this.onAgentRelease = null;
+    this.needs = makeNeeds();
     this.hideBubble();
     this.hideNameTag();
+    this.setWitness(false);
 
     if (this.entitySprite) {
       this.entitySprite.setTexture(textureKey);
@@ -467,8 +517,15 @@ export class NPC extends Entity {
   }
 
   deactivate(): void {
+    // Persist this agent's needs back to its resident before recycling
+    if (this.onAgentRelease) {
+      const cb = this.onAgentRelease;
+      this.onAgentRelease = null;
+      cb(this);
+    }
     this.hideBubble();
     this.hideNameTag();
+    this.setWitness(false);
     this.inConversation = false;
     super.deactivate();
   }

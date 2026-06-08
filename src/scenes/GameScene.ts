@@ -251,7 +251,7 @@ export class GameScene extends Phaser.Scene {
     this.playerIsPolice = playerClass === 'police';
     this.livingCity = new LivingCitySystem(this, this.npcManager);
     if (this.mapManager?.currentDistrict) {
-      this.livingCity.init(this.mapManager.currentDistrict.stations);
+      this.livingCity.init(this.mapManager.currentDistrict);
     }
 
     // Graffiti system
@@ -739,15 +739,24 @@ export class GameScene extends Phaser.Scene {
       if (npc && !this.dialogueSystem.isVisible()) {
         // Living-City civilians get a generated, context-aware line + persona
         if (npc.npcType === 'civilian' && this.livingCity) {
-          const talk = this.livingCity.talkTo(npc, {
+          const cityCtx = {
             playerX: this.player.x,
             playerY: this.player.y,
             playerIsPolice: this.playerIsPolice,
             timeOfDay: this.dayNightSystem?.getTimeOfDay() ?? 0.4,
             weather: (this.weatherSystem?.getWeather() ?? 'clear') as 'clear' | 'rain' | 'snow' | 'fog',
             sirenActive: this.pursuitSystem?.getIsActive() ?? false,
-          });
-          this.dialogueSystem.showAgent(talk.name, talk.line, talk.moodLabel);
+          };
+          if (this.playerIsPolice && this.livingCity.isWitness(npc)) {
+            // Question the witness — clue + small reward
+            const w = this.livingCity.questionWitness(npc, cityCtx);
+            this.dialogueSystem.showAgent(w.name, w.clue, 'witness');
+            this.economyManager?.earn(w.reward, 'witness_tip');
+            this.floatingText?.spawn(this.player.x, this.player.y - 12, `+$${w.reward} TIP`, '#4caf50', '5px');
+          } else {
+            const talk = this.livingCity.talkTo(npc, cityCtx);
+            this.dialogueSystem.showAgent(talk.name, talk.line, talk.moodLabel);
+          }
         } else {
           this.dialogueSystem.show(npc.npcType, npc.getDialogue());
         }

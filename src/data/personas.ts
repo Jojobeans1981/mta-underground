@@ -67,3 +67,54 @@ export const MOOD_LABEL: Record<AgentMood, string> = {
   annoyed: 'annoyed',
   nervous: 'nervous',
 };
+
+// ===== The Sims layer: needs / motives =====
+
+/** Four core motives, 0 (desperate) .. 100 (fully satisfied). */
+export interface Needs {
+  hunger: number;
+  energy: number;
+  social: number;
+  fun: number;
+}
+
+export type NeedKind = keyof Needs;
+
+/** City amenities an agent can walk to in order to satisfy a need. */
+export type AmenityKind = 'food' | 'rest' | 'social' | 'fun' | 'shelter';
+
+/** Which amenity satisfies which need. */
+export const NEED_TO_AMENITY: Record<NeedKind, AmenityKind> = {
+  hunger: 'food',
+  energy: 'rest',
+  social: 'social',
+  fun: 'fun',
+};
+
+/** Fresh, mostly-satisfied needs with a little random spread. */
+export function makeNeeds(): Needs {
+  const j = () => 55 + Math.random() * 40;
+  return { hunger: j(), energy: j(), social: j(), fun: j() };
+}
+
+/** The most urgent (lowest) need, or null if everything is comfortable. */
+export function lowestNeed(n: Needs, threshold = 35): { kind: NeedKind; value: number } | null {
+  let kind: NeedKind = 'hunger';
+  let value = n.hunger;
+  (['energy', 'social', 'fun'] as NeedKind[]).forEach((k) => {
+    if (n[k] < value) { value = n[k]; kind = k; }
+  });
+  return value <= threshold ? { kind, value } : null;
+}
+
+/** Derive a mood from the current needs (used when an agent has a needs model). */
+export function moodFromNeeds(n: Needs): AgentMood {
+  if (n.energy < 25) return 'tired';
+  if (n.hunger < 25) return 'annoyed';
+  if (n.fun < 25) return 'annoyed';
+  if (n.social < 25) return 'content';
+  const avg = (n.hunger + n.energy + n.social + n.fun) / 4;
+  if (avg > 75) return 'cheerful';
+  if (avg < 45) return 'stressed';
+  return 'content';
+}
