@@ -55,6 +55,8 @@ export class SFXGenerator {
       case 'ui_click': this.playUIClick(); break;
       case 'npc_interact': this.playNPCInteract(); break;
       case 'alert': this.playAlert(); break;
+      case 'spray_paint': this.playSprayPaint(); break;
+      case 'tag_rival': this.playTagRival(); break;
     }
   }
 
@@ -837,6 +839,105 @@ export class SFXGenerator {
     sub.connect(subEnv).connect(this.out);
     sub.start(t);
     sub.stop(t + 0.15);
+  }
+
+  /** Spray can hiss — filtered white noise with pitch sweep */
+  private playSprayPaint(): void {
+    const ctx = this.ctx!;
+    const t = this.now();
+
+    // Layer 1: Spray hiss (high-pass filtered noise)
+    const noise = ctx.createBufferSource();
+    noise.buffer = this.createNoiseBuffer(0.8);
+    const hpf = ctx.createBiquadFilter();
+    hpf.type = 'highpass';
+    hpf.frequency.value = 3000;
+    hpf.Q.value = 1.5;
+    const env = ctx.createGain();
+    env.gain.setValueAtTime(0, t);
+    env.gain.linearRampToValueAtTime(0.12, t + 0.05);
+    env.gain.setValueAtTime(0.12, t + 0.5);
+    env.gain.exponentialRampToValueAtTime(0.001, t + 0.8);
+    noise.connect(hpf).connect(env).connect(this.out);
+    noise.start(t);
+    noise.stop(t + 0.8);
+
+    // Layer 2: Ball rattle in can (metallic clicks)
+    for (let i = 0; i < 3; i++) {
+      const click = ctx.createOscillator();
+      click.type = 'square';
+      click.frequency.value = 2000 + Math.random() * 1000;
+      const clickEnv = ctx.createGain();
+      const ct = t + 0.02 + i * 0.04;
+      clickEnv.gain.setValueAtTime(0.06, ct);
+      clickEnv.gain.exponentialRampToValueAtTime(0.001, ct + 0.02);
+      click.connect(clickEnv).connect(this.out);
+      click.start(ct);
+      click.stop(ct + 0.02);
+    }
+
+    // Layer 3: Low pressure whoosh
+    const whoosh = ctx.createOscillator();
+    whoosh.type = 'sawtooth';
+    whoosh.frequency.setValueAtTime(80, t);
+    whoosh.frequency.linearRampToValueAtTime(40, t + 0.6);
+    const whooshEnv = ctx.createGain();
+    whooshEnv.gain.setValueAtTime(0.03, t);
+    whooshEnv.gain.linearRampToValueAtTime(0, t + 0.6);
+    whoosh.connect(whooshEnv).connect(this.out);
+    whoosh.start(t);
+    whoosh.stop(t + 0.6);
+  }
+
+  /** Aggressive tag-over sound — spray + low grunt/impact */
+  private playTagRival(): void {
+    const ctx = this.ctx!;
+    const t = this.now();
+
+    // Spray hiss (same as above but shorter, punchier)
+    const noise = ctx.createBufferSource();
+    noise.buffer = this.createNoiseBuffer(0.5);
+    const hpf = ctx.createBiquadFilter();
+    hpf.type = 'highpass';
+    hpf.frequency.value = 2500;
+    const env = ctx.createGain();
+    env.gain.setValueAtTime(0.15, t);
+    env.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+    noise.connect(hpf).connect(env).connect(this.out);
+    noise.start(t);
+    noise.stop(t + 0.5);
+
+    // Impact thud — claiming territory
+    const thud = ctx.createOscillator();
+    thud.type = 'sine';
+    thud.frequency.value = 60;
+    const thudEnv = ctx.createGain();
+    thudEnv.gain.setValueAtTime(0.25, t);
+    thudEnv.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+    thud.connect(thudEnv).connect(this.out);
+    thud.start(t);
+    thud.stop(t + 0.2);
+
+    // Triumph tone — quick ascending notes
+    const note1 = ctx.createOscillator();
+    note1.type = 'triangle';
+    note1.frequency.value = 440;
+    const n1Env = ctx.createGain();
+    n1Env.gain.setValueAtTime(0.08, t + 0.15);
+    n1Env.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+    note1.connect(n1Env).connect(this.out);
+    note1.start(t + 0.15);
+    note1.stop(t + 0.25);
+
+    const note2 = ctx.createOscillator();
+    note2.type = 'triangle';
+    note2.frequency.value = 554;
+    const n2Env = ctx.createGain();
+    n2Env.gain.setValueAtTime(0.08, t + 0.22);
+    n2Env.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+    note2.connect(n2Env).connect(this.out);
+    note2.start(t + 0.22);
+    note2.stop(t + 0.35);
   }
 
   private playAmbientCrowd(): { stop: () => void } {

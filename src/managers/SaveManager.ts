@@ -42,6 +42,8 @@ export class SaveManager {
       npcsCaught: 0,
       faresEvaded: 0,
       passengersDelivered: 0,
+      streetCred: 0,
+      tagsPlaced: 0,
     };
 
     const policeProgress: ClassProgress = {

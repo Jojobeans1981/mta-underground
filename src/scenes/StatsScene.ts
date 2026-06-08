@@ -69,6 +69,8 @@ export class StatsScene extends Phaser.Scene {
       { label: 'Current Balance', value: `$${save.wallet}` },
       { label: 'Total XP Earned', value: `${stats.totalXpEarned}` },
       { label: 'NPCs Caught', value: `${stats.npcsCaught}` },
+      { label: 'Street Cred', value: `${stats.streetCred ?? 0}` },
+      { label: 'Tags Placed', value: `${stats.tagsPlaced ?? 0}` },
       { label: 'Completion', value: `${classProgress.completedMissionIds.length}/10 missions` },
     ];
 

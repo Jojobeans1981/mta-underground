@@ -52,6 +52,8 @@ export interface PlayerStats {
   npcsCaught: number;
   faresEvaded: number;
   passengersDelivered: number;
+  streetCred: number;
+  tagsPlaced: number;
 }
 
 // ===== Missions =====

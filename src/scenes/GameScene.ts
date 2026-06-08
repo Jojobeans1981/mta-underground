@@ -29,6 +29,7 @@ import { ComboSystem } from '@/systems/ComboSystem';
 import { DailyChallengeSystem } from '@/systems/DailyChallengeSystem';
 import { AchievementSystem } from '@/systems/AchievementSystem';
 import { LeaderboardSystem } from '@/systems/LeaderboardSystem';
+import { GraffitiSystem } from '@/systems/GraffitiSystem';
 import { ParticleEffects } from '@/systems/ParticleEffects';
 import { FloatingTextSystem } from '@/systems/FloatingTextSystem';
 import { StreakAnnouncer } from '@/systems/StreakAnnouncer';
@@ -99,6 +100,14 @@ export class GameScene extends Phaser.Scene {
   private missionNPCs: NPC[] = [];
   private missionMenuOpen: boolean = false;
   private playTimeAccumulator: number = 0;
+
+  // Graffiti tag system
+  private graffitiSystem: GraffitiSystem | null = null;
+  private tagPrompt: Phaser.GameObjects.Text | null = null;
+  private isTagging: boolean = false;
+  private tagTimer: number = 0;
+  private tagProgressBar: Phaser.GameObjects.Rectangle | null = null;
+  private tagProgressBg: Phaser.GameObjects.Rectangle | null = null;
 
   // Objective marker system — spawns interactable glowing pickups for collect/interact objectives
   private objectiveMarkers: Map<string, Phaser.GameObjects.Container> = new Map();
@@ -229,6 +238,24 @@ export class GameScene extends Phaser.Scene {
     this.weatherSystem = new WeatherSystem(this);
     this.weatherSystem.init();
 
+    // Graffiti system
+    this.graffitiSystem = new GraffitiSystem(this);
+    if (this.mapManager?.currentDistrict) {
+      this.graffitiSystem.init(this.mapManager.currentDistrict.stations);
+    }
+
+    // Tag prompt (screen-space, hidden by default)
+    this.tagPrompt = this.add.text(0, 0, '', {
+      fontSize: '20px', color: '#ff00ff', fontStyle: 'bold',
+      backgroundColor: '#000000cc', padding: { x: 8, y: 4 },
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(960).setVisible(false);
+
+    // Tag progress bar (screen-space)
+    this.tagProgressBg = this.add.rectangle(0, 0, 50, 5, 0x333333, 0.8)
+      .setScrollFactor(0).setDepth(960).setVisible(false);
+    this.tagProgressBar = this.add.rectangle(0, 0, 0, 5, 0xff00ff, 0.9)
+      .setOrigin(0, 0.5).setScrollFactor(0).setDepth(961).setVisible(false);
+
     // Start music
     this.audioManager?.playMusic('street_theme');
 
@@ -243,10 +270,15 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    // Idle radio hint
+    // Idle radio hints
     this.time.delayedCall(4000, () => {
       if (!this.missionManager?.isActive() && !this.tutorial?.getIsShowing()) {
         this.game.events.emit('radio.hint', 'Head to a station to pick up your first mission.');
+      }
+    });
+    this.time.delayedCall(20000, () => {
+      if (!this.missionManager?.isActive() && !this.tutorial?.getIsShowing()) {
+        this.game.events.emit('radio.hint', 'See those walls near stations? Hold E to tag them for street cred.');
       }
     });
 
@@ -758,6 +790,91 @@ export class GameScene extends Phaser.Scene {
               0xff6f00, 14
             );
           }
+        }
+      }
+    }
+
+    // Graffiti tagging system
+    if (this.graffitiSystem && this.player && !this.missionManager?.isActive()) {
+      this.graffitiSystem.update(delta);
+
+      const nearSpot = this.graffitiSystem.getNearbySpot(this.player.x, this.player.y);
+      if (nearSpot) {
+        const screenX = toScreenX(nearSpot.worldX);
+        const screenY = toScreenY(nearSpot.worldY) - 18;
+
+        if (this.isTagging) {
+          // Tagging in progress — hold E
+          this.tagTimer += delta / 1000;
+          const progress = Math.min(this.tagTimer / 1.5, 1); // 1.5 seconds to tag
+
+          this.tagProgressBg?.setPosition(screenX, screenY + 12).setVisible(true);
+          this.tagProgressBar?.setPosition(screenX - 25, screenY + 12).setVisible(true);
+          this.tagProgressBar?.setSize(50 * progress, 5);
+          this.tagPrompt?.setPosition(screenX, screenY).setVisible(true);
+          this.tagPrompt?.setText('TAGGING...');
+
+          if (progress >= 1) {
+            // Complete the tag!
+            const result = this.graffitiSystem.tagSpot(nearSpot.id);
+            if (result) {
+              this.audioManager?.playSFX(result.wasRival ? 'tag_rival' : 'spray_paint');
+              this.floatingText?.spawn(nearSpot.worldX, nearSpot.worldY - 10,
+                `+${result.cred} CRED`, '#ff00ff', '5px');
+              this.particles?.confettiRain();
+
+              if (result.wasRival) {
+                this.floatingText?.spawn(nearSpot.worldX, nearSpot.worldY - 18,
+                  `TAGGED OVER ${result.rivalCrew.toUpperCase()}!`, '#ff4444', '4px');
+                this.game.events.emit('radio.hint',
+                  `You tagged over ${result.rivalCrew}. They will be back.`);
+              }
+
+              // Update save
+              const save = this.saveManager?.load();
+              if (save) {
+                save.stats.streetCred = (save.stats.streetCred ?? 0) + result.cred;
+                save.stats.tagsPlaced = (save.stats.tagsPlaced ?? 0) + 1;
+                this.saveManager?.save(save);
+              }
+
+              // Earn some money too
+              this.economyManager?.earn(result.wasRival ? 25 : 10, 'graffiti');
+            }
+            this.isTagging = false;
+            this.tagTimer = 0;
+          }
+
+          // If player moves away while tagging, cancel
+          const dist = Math.hypot(this.player.x - nearSpot.worldX, this.player.y - nearSpot.worldY);
+          if (dist > 22) {
+            this.isTagging = false;
+            this.tagTimer = 0;
+          }
+        } else {
+          // Show tag prompt
+          const label = nearSpot.owner === 'rival'
+            ? `[HOLD E] Tag over ${nearSpot.rivalCrew}`
+            : '[HOLD E] Tag this wall';
+          this.tagPrompt?.setPosition(screenX, screenY).setVisible(true);
+          this.tagPrompt?.setText(label);
+          this.tagProgressBg?.setVisible(false);
+          this.tagProgressBar?.setVisible(false);
+
+          // Start tagging on action press
+          if (actionPressed) {
+            this.isTagging = true;
+            this.tagTimer = 0;
+            this.audioManager?.playSFX('spray_paint');
+          }
+        }
+      } else {
+        this.tagPrompt?.setVisible(false);
+        this.tagProgressBg?.setVisible(false);
+        this.tagProgressBar?.setVisible(false);
+        if (this.isTagging) {
+          this.isTagging = false;
+          this.tagTimer = 0;
         }
       }
     }
