@@ -28,6 +28,7 @@ import { RandomEventSystem, RandomEvent } from '@/systems/RandomEventSystem';
 import { ComboSystem } from '@/systems/ComboSystem';
 import { DailyChallengeSystem } from '@/systems/DailyChallengeSystem';
 import { AchievementSystem } from '@/systems/AchievementSystem';
+import { LeaderboardSystem } from '@/systems/LeaderboardSystem';
 import { ParticleEffects } from '@/systems/ParticleEffects';
 import { FloatingTextSystem } from '@/systems/FloatingTextSystem';
 import { StreakAnnouncer } from '@/systems/StreakAnnouncer';
@@ -97,6 +98,7 @@ export class GameScene extends Phaser.Scene {
   private stationPrompt: Phaser.GameObjects.Text | null = null;
   private missionNPCs: NPC[] = [];
   private missionMenuOpen: boolean = false;
+  private playTimeAccumulator: number = 0;
 
   constructor() {
     super({ key: 'GameScene' });
@@ -359,6 +361,18 @@ export class GameScene extends Phaser.Scene {
       } else {
         this.inputManager.resetActionFlag();
         return;
+      }
+    }
+
+    // Track play time — accumulate delta ms, flush to save every 10 seconds
+    this.playTimeAccumulator += delta;
+    if (this.playTimeAccumulator >= 10000) {
+      const secondsElapsed = Math.floor(this.playTimeAccumulator / 1000);
+      this.playTimeAccumulator -= secondsElapsed * 1000;
+      const save = this.saveManager?.load();
+      if (save) {
+        save.stats.totalPlayTime += secondsElapsed;
+        this.saveManager?.save(save);
       }
     }
 
@@ -970,6 +984,29 @@ export class GameScene extends Phaser.Scene {
         const catchCount = mission.objectives.filter(o => o.type === 'catch_npc').length;
         save.stats.npcsCaught += catchCount;
         this.saveManager?.save(save);
+      }
+    }
+
+    // Submit leaderboard entry on mission success
+    if (success) {
+      const leaderboard = this.game.registry.get('leaderboard') as LeaderboardSystem | undefined;
+      const lbSave = this.saveManager?.load();
+      if (leaderboard && lbSave) {
+        const cp = lbSave.classes[lbSave.selectedClass];
+        const score = LeaderboardSystem.calculateScore({
+          level: cp.level,
+          missionsCompleted: lbSave.stats.totalMissionsCompleted,
+          moneyEarned: lbSave.stats.totalMoneyEarned,
+          npcsCaught: lbSave.stats.npcsCaught,
+        });
+        leaderboard.addEntry({
+          playerName: lbSave.selectedClass,
+          characterClass: lbSave.selectedClass,
+          score,
+          missionsCompleted: lbSave.stats.totalMissionsCompleted,
+          level: cp.level,
+          timestamp: Date.now(),
+        });
       }
     }
 

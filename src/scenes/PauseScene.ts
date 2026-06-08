@@ -32,8 +32,8 @@ export class PauseScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     // Menu buttons
-    const btnSpacing = 113;
-    let y = height * 0.32;
+    const btnSpacing = 80;
+    let y = height * 0.2;
 
     // RESUME
     this.createMenuBtn(width / 2, y, 'RESUME', () => this.resumeGame());
@@ -50,6 +50,20 @@ export class PauseScene extends Phaser.Scene {
     this.createMenuBtn(width / 2, y, 'STATS', () => {
       this.resumeGame();
       void this.loadAndLaunchScene('StatsScene');
+    });
+    y += btnSpacing;
+
+    // LEADERBOARD
+    this.createMenuBtn(width / 2, y, 'LEADERBOARD', () => {
+      this.resumeGame();
+      void this.loadAndLaunchScene('LeaderboardScene');
+    });
+    y += btnSpacing;
+
+    // PREMIUM STORE
+    this.createMenuBtn(width / 2, y, 'PREMIUM STORE', () => {
+      this.resumeGame();
+      void this.loadAndLaunchScene('PremiumStoreScene');
     });
     y += btnSpacing;
 
@@ -74,12 +88,12 @@ export class PauseScene extends Phaser.Scene {
   }
 
   private createMenuBtn(x: number, y: number, label: string, callback: () => void, danger: boolean = false): void {
-    const bg = this.add.rectangle(x, y, 450, 80, danger ? 0x882222 : hexToNum(COLOR_UI_SURFACE));
-    bg.setStrokeStyle(5, danger ? 0xcc4444 : hexToNum(COLOR_UI_PRIMARY));
+    const bg = this.add.rectangle(x, y, 420, 58, danger ? 0x882222 : hexToNum(COLOR_UI_SURFACE));
+    bg.setStrokeStyle(3, danger ? 0xcc4444 : hexToNum(COLOR_UI_PRIMARY));
     bg.setInteractive({ useHandCursor: true });
 
     const text = this.add.text(x, y, label, {
-      fontSize: '30px', color: '#ffffff', fontStyle: 'bold',
+      fontSize: '24px', color: '#ffffff', fontStyle: 'bold',
     }).setOrigin(0.5);
 
     bg.on('pointerdown', () => {
