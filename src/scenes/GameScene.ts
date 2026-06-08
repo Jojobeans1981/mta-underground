@@ -100,6 +100,13 @@ export class GameScene extends Phaser.Scene {
   private missionMenuOpen: boolean = false;
   private playTimeAccumulator: number = 0;
 
+  // Objective marker system — spawns interactable glowing pickups for collect/interact objectives
+  private objectiveMarkers: Map<string, Phaser.GameObjects.Container> = new Map();
+  // Survive-time tracking — accumulate time spent near target station
+  private surviveTimers: Map<string, { targetId: string; required: number; elapsed: number; objId: string }> = new Map();
+  // Radio hint timer — periodically remind the player what to do
+  private radioHintTimer: number = 0;
+
   constructor() {
     super({ key: 'GameScene' });
   }
@@ -689,6 +696,40 @@ export class GameScene extends Phaser.Scene {
         } else {
           this.objectiveArrow.clear();
         }
+      } else if (this.missionManager?.isActive()) {
+        // Active mission without patrol/pursuit — point to nearest objective marker or next waypoint
+        let pointed = false;
+
+        // First try: nearest objective marker (green interactable)
+        if (this.objectiveMarkers.size > 0) {
+          let nearestDist = Infinity;
+          let nearestPos = { x: 0, y: 0 };
+          for (const container of this.objectiveMarkers.values()) {
+            const d = Math.hypot(container.x - this.player.x, container.y - this.player.y);
+            if (d < nearestDist) { nearestDist = d; nearestPos = { x: container.x, y: container.y }; }
+          }
+          this.objectiveArrow.setTarget(nearestPos.x, nearestPos.y, 'Investigate');
+          pointed = true;
+        }
+
+        // Fallback: find next incomplete reach_location objective station
+        if (!pointed) {
+          const objectives = this.missionManager.getObjectiveProgress();
+          const next = objectives.find(o => !o.completed && !o.optional);
+          if (next) {
+            const progress = this.missionManager.activeObjectives.get(next.id);
+            if (progress) {
+              const targetId = progress.objective.targetId.replace('_platform', '');
+              const station = this.mapManager?.getStation(targetId);
+              if (station) {
+                this.objectiveArrow.setTarget(station.position.x, station.position.y, station.name);
+                pointed = true;
+              }
+            }
+          }
+        }
+
+        if (!pointed) this.objectiveArrow.clear();
       } else if (!this.missionManager?.isActive()) {
         const nearestStation = this.findNearestStation();
         if (nearestStation) {
@@ -718,6 +759,21 @@ export class GameScene extends Phaser.Scene {
             );
           }
         }
+      }
+    }
+
+    // Update objective markers (must happen before resetActionFlag)
+    this.updateObjectiveMarkers();
+
+    // Update survive-time objectives
+    this.updateSurviveTimers(delta);
+
+    // Periodic radio hints (every 30 seconds during active mission)
+    if (this.missionManager?.isActive()) {
+      this.radioHintTimer += delta / 1000;
+      if (this.radioHintTimer >= 30) {
+        this.radioHintTimer = 0;
+        this.sendNextObjectiveHint();
       }
     }
 
@@ -825,16 +881,33 @@ export class GameScene extends Phaser.Scene {
         this.startPatrolMission(mission);
         break;
       case 'investigate':
+        this.spawnObjectiveMarkers(mission);
         break;
       case 'escort':
         break;
     }
+
+    // Spawn interactable markers for any interact_object/collect_item objectives
+    // (even in non-investigate missions like patrol+talk combo)
+    const hasInteractObjectives = mission.objectives.some(
+      o => (o.type === 'interact_object' || o.type === 'collect_item') && !o.optional
+    );
+    if (hasInteractObjectives && mission.type !== 'investigate') {
+      this.spawnObjectiveMarkers(mission);
+    }
+
+    // Start survive_time tracking
+    this.startSurviveTimers(mission);
 
     if (mission.id === 'police_m07') {
       this.dayNightSystem?.setTime(0.9);
     }
 
     this.placeObjectiveWaypoints(mission);
+
+    // Send first radio hint after brief delay
+    this.radioHintTimer = 0;
+    this.time.delayedCall(3000, () => this.sendNextObjectiveHint());
   }
 
   private placeObjectiveWaypoints(mission: MissionDefinition): void {
@@ -876,6 +949,189 @@ export class GameScene extends Phaser.Scene {
         this.waypointMarker?.addWaypoint(obj.id, wx, wy, label, color);
       }
     }
+  }
+
+  /** Spawn glowing interactable pickups for interact_object / collect_item objectives */
+  private spawnObjectiveMarkers(mission: MissionDefinition): void {
+    this.clearObjectiveMarkers();
+
+    for (const obj of mission.objectives) {
+      if (obj.optional) continue;
+      if (obj.type !== 'interact_object' && obj.type !== 'collect_item') continue;
+
+      // Determine spawn location — try to find a station matching the targetId, or use mission station
+      let station = this.mapManager?.getStation(obj.targetId.replace('_platform', ''));
+      if (!station) station = this.mapManager?.getStation(mission.stationId);
+      if (!station) continue;
+
+      // Scatter markers around the station with some randomness
+      const spawnX = station.position.x + (Math.random() - 0.5) * 80;
+      const spawnY = station.position.y + (Math.random() - 0.5) * 50;
+
+      const container = this.add.container(spawnX, spawnY);
+      container.setDepth(85);
+
+      // Glowing pickup circle
+      const glow = this.add.circle(0, 0, 8, 0x00ff88, 0.25);
+      container.add(glow);
+      this.tweens.add({
+        targets: glow,
+        scaleX: { from: 0.8, to: 1.6 },
+        scaleY: { from: 0.8, to: 1.6 },
+        alpha: { from: 0.3, to: 0 },
+        duration: 1000,
+        repeat: -1,
+      });
+
+      // Inner solid marker
+      const inner = this.add.circle(0, 0, 5, 0x00ff88, 0.9);
+      container.add(inner);
+      this.tweens.add({
+        targets: inner,
+        y: { from: -2, to: 2 },
+        duration: 600,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+      });
+
+      // Label
+      const label = this.add.text(0, -10, obj.description, {
+        fontSize: '24px', color: '#ffffff', fontStyle: 'bold',
+        backgroundColor: '#000000aa', padding: { x: 12, y: 6 },
+      }).setOrigin(0.5, 1).setScale(0.125);
+      container.add(label);
+
+      // Interaction prompt (shows when near)
+      const prompt = this.add.text(0, 10, '[E] Investigate', {
+        fontSize: '24px', color: '#00ff88',
+        backgroundColor: '#000000cc', padding: { x: 10, y: 6 },
+      }).setOrigin(0.5, 0).setScale(0.125).setVisible(false);
+      container.add(prompt);
+
+      this.objectiveMarkers.set(obj.id, container);
+    }
+  }
+
+  /** Check if player is near any objective marker and handle interaction */
+  private updateObjectiveMarkers(): void {
+    if (!this.player || !this.missionManager?.isActive()) return;
+
+    const px = this.player.x;
+    const py = this.player.y;
+    const actionPressed = this.inputManager?.isActionPressed() ?? false;
+
+    for (const [objId, container] of this.objectiveMarkers) {
+      const dist = Math.hypot(px - container.x, py - container.y);
+      const prompt = container.getAt(3) as Phaser.GameObjects.Text; // The [E] prompt
+
+      if (dist < 20) {
+        prompt?.setVisible(true);
+        if (actionPressed) {
+          // Complete the objective
+          this.missionManager?.updateObjective(objId, 1);
+          this.floatingText?.spawn(container.x, container.y - 10, 'FOUND!', '#00ff88', '5px');
+          this.particles?.catchExplosion(container.x, container.y);
+          this.audioManager?.playSFX('money_pickup');
+
+          // Remove the marker
+          container.destroy();
+          this.objectiveMarkers.delete(objId);
+
+          // Radio confirmation
+          this.game.events.emit('radio.hint', 'Good work. Keep going.');
+        }
+      } else {
+        prompt?.setVisible(false);
+      }
+    }
+  }
+
+  /** Clear all objective markers */
+  private clearObjectiveMarkers(): void {
+    for (const container of this.objectiveMarkers.values()) {
+      container.destroy();
+    }
+    this.objectiveMarkers.clear();
+  }
+
+  /** Start survive_time tracking for objectives that require staying near a location */
+  private startSurviveTimers(mission: MissionDefinition): void {
+    this.surviveTimers.clear();
+    for (const obj of mission.objectives) {
+      if (obj.optional) continue;
+      if (obj.type !== 'survive_time') continue;
+
+      this.surviveTimers.set(obj.id, {
+        targetId: obj.targetId,
+        required: obj.count, // seconds required
+        elapsed: 0,
+        objId: obj.id,
+      });
+    }
+  }
+
+  /** Update survive timers — player must be within range of target station */
+  private updateSurviveTimers(delta: number): void {
+    if (!this.player || !this.missionManager?.isActive()) return;
+
+    const px = this.player.x;
+    const py = this.player.y;
+
+    for (const [objId, timer] of this.surviveTimers) {
+      const station = this.mapManager?.getStation(timer.targetId.replace('_platform', ''));
+      if (!station) continue;
+
+      const dist = Math.hypot(px - station.position.x, py - station.position.y);
+      const range = 80; // Must be within 80 world units of station
+
+      if (dist <= range) {
+        timer.elapsed += delta / 1000;
+
+        // Show progress every 15 seconds
+        if (Math.floor(timer.elapsed) % 15 === 0 && Math.floor(timer.elapsed) > 0
+          && Math.abs(timer.elapsed - Math.floor(timer.elapsed)) < delta / 1000) {
+          const remaining = Math.max(0, Math.ceil(timer.required - timer.elapsed));
+          this.floatingText?.spawn(px, py - 10, `${remaining}s left`, '#ffffff', '4px');
+        }
+
+        if (timer.elapsed >= timer.required) {
+          this.missionManager?.updateObjective(objId, timer.required);
+          this.surviveTimers.delete(objId);
+          this.floatingText?.spawn(px, py - 10, 'COMPLETE!', '#4caf50', '5px');
+          this.audioManager?.playSFX('money_pickup');
+        }
+      }
+    }
+  }
+
+  /** Send a radio hint about the next incomplete objective */
+  private sendNextObjectiveHint(): void {
+    if (!this.missionManager?.isActive()) return;
+
+    const objectives = this.missionManager.getObjectiveProgress();
+    const next = objectives.find(o => !o.completed && !o.optional);
+    if (!next) return;
+
+    let hint = '';
+    if (next.description.toLowerCase().includes('reach') || next.description.toLowerCase().includes('visit')
+      || next.description.toLowerCase().includes('stop at') || next.description.toLowerCase().includes('return')) {
+      hint = `Follow the orange arrow to ${next.description.replace(/^(Reach |Visit |Stop at |Return to )/, '')}.`;
+    } else if (next.description.toLowerCase().includes('catch') || next.description.toLowerCase().includes('chase')) {
+      hint = `Chase the suspect! Sprint with SHIFT and get close to catch them.`;
+    } else if (next.description.toLowerCase().includes('search') || next.description.toLowerCase().includes('find')) {
+      hint = `Look for the green glow near the station. Walk up and press E to investigate.`;
+    } else if (next.description.toLowerCase().includes('talk') || next.description.toLowerCase().includes('check')) {
+      hint = `Look for the green markers near NPCs. Walk up and press E to interact.`;
+    } else if (next.description.toLowerCase().includes('patrol') || next.description.toLowerCase().includes('navigate')) {
+      hint = `Stay near the station area. The timer will count down automatically.`;
+    } else if (next.description.toLowerCase().includes('escort')) {
+      hint = `Walk to the target location. Keep moving toward the waypoint.`;
+    } else {
+      hint = `Objective: ${next.description}. Follow the markers on your map.`;
+    }
+
+    this.game.events.emit('radio.hint', hint);
   }
 
   private spawnPursuitNPCs(mission: MissionDefinition, station: Station): void {
@@ -922,6 +1178,9 @@ export class GameScene extends Phaser.Scene {
     this.pursuitSystem?.stop();
     this.patrolSystem?.stop();
     this.waypointMarker?.clearAll();
+    this.clearObjectiveMarkers();
+    this.surviveTimers.clear();
+    this.radioHintTimer = 0;
     this.audioManager?.crossfadeMusic('street_theme');
 
     if (success) {
@@ -1146,6 +1405,8 @@ export class GameScene extends Phaser.Scene {
 
     if (this.missionManager?.isActive()) {
       this.missionManager.updateObjectiveByTarget(stationId);
+      // Also complete _platform suffixed objectives (patrol missions)
+      this.missionManager.updateObjectiveByTarget(stationId + '_platform');
     }
 
     this.scene.wake('GameScene');

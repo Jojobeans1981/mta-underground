@@ -48,6 +48,18 @@ export class MissionBriefScene extends Phaser.Scene {
     }).setOrigin(0.5, 0);
     y += briefText.height + 18;
 
+    // How to play hint based on mission type
+    const howToPlay = this.getHowToPlay(mission);
+    if (howToPlay) {
+      const hintBg = this.add.rectangle(width / 2, y + 18, panelW - 40, 36, 0x1a3a1a, 0.8);
+      hintBg.setStrokeStyle(1, 0x00ff88);
+      const hintText = this.add.text(width / 2, y + 18, howToPlay, {
+        fontSize: '14px', color: '#00ff88', fontStyle: 'bold', align: 'center',
+        wordWrap: { width: panelW - 60 },
+      }).setOrigin(0.5);
+      y += 44;
+    }
+
     // Objectives header
     this.add.text(left, y, 'OBJECTIVES:', {
       fontSize: '18px', color: COLOR_UI_PRIMARY, fontStyle: 'bold',
@@ -110,5 +122,25 @@ export class MissionBriefScene extends Phaser.Scene {
     backBg.on('pointerdown', () => {
       this.scene.stop('MissionBriefScene');
     });
+  }
+
+  private getHowToPlay(mission: MissionDefinition): string {
+    switch (mission.type) {
+      case 'timed_route':
+      case 'delivery':
+        return 'Follow the orange arrows to each station. Enter stations with E.';
+      case 'pursuit':
+        return 'Chase the red marker! Sprint with SHIFT, get close to catch suspects.';
+      case 'patrol':
+        return 'Visit each station — enter with E to check in at the platform.';
+      case 'investigate':
+        return 'Find the green glowing markers near stations. Press E to investigate.';
+      case 'escort':
+        return 'Follow the waypoints to escort the target to safety.';
+      case 'survival':
+        return 'Stay near the station area. Timer counts down while you are close.';
+      default:
+        return 'Follow the waypoint markers and press E to interact.';
+    }
   }
 }
