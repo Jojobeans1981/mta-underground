@@ -41,38 +41,29 @@ export class StationScene extends Phaser.Scene {
     this.currentStation = this.mapManager.getStation(data.stationId);
     if (!this.currentStation) return;
 
-    // Render station
+    // Render station (now fills the screen at zoom 1)
     const result = StationRenderer.renderStation(this, this.currentStation);
     this.platformY = result.platformY;
     this.exitY = result.exitY;
     this.exitX = result.exitX;
+    const b = result.bounds;
 
     const width = this.cameras.main.width;
-    const height = this.cameras.main.height;
 
-    // Create player at entrance (bottom center)
-    this.player = new Player(this, width / 2, height * 0.82, 'police');
+    // Player spawns inside the room near the turnstiles; scaled up for the big interior
+    this.player = new Player(this, result.playerSpawn.x, result.playerSpawn.y, 'police');
+    this.player.setScale(2.2);
     this.player.setDepth(100);
 
     // Setup input
     this.inputManager.setup(this);
 
-    // Exit zone (bottom area)
-    this.exitZone = this.add.rectangle(
-      this.exitX,
-      this.exitY,
-      40,
-      20
-    ).setVisible(false);
+    // Exit zone (bottom)
+    this.exitZone = this.add.rectangle(this.exitX, this.exitY, 70, 44).setVisible(false);
     this.physics.add.existing(this.exitZone, true);
 
-    // Platform zone
-    this.platformZone = this.add.rectangle(
-      width / 2,
-      this.platformY,
-      80,
-      30
-    ).setVisible(false);
+    // Platform zone (center)
+    this.platformZone = this.add.rectangle(width / 2, this.platformY, 140, 64).setVisible(false);
     this.physics.add.existing(this.platformZone, true);
 
     // Prompt text
@@ -83,22 +74,17 @@ export class StationScene extends Phaser.Scene {
       padding: { x: 10, y: 5 },
     }).setOrigin(0.5).setDepth(200).setVisible(false);
 
-    // Physics bounds for station interior
-    this.physics.world.setBounds(
-      width / 2 - 140,
-      height / 2 - 100,
-      280,
-      200
-    );
+    // Physics bounds = the room interior
+    this.physics.world.setBounds(b.x, b.y, b.width, b.height);
 
-    // Spawn station NPCs (3-5 civilians)
+    // Spawn station NPCs (3-5 civilians) across the platform
     this.stationNPCs = [];
     const npcCount = 3 + Math.floor(Math.random() * 3);
     for (let i = 0; i < npcCount; i++) {
-      // Scatter on platform and near turnstiles
-      const nx = width / 2 - 60 + Math.random() * 120;
-      const ny = this.platformY - 20 + Math.random() * 40;
+      const nx = width / 2 + (Math.random() - 0.5) * b.width * 0.55;
+      const ny = this.platformY - 30 + Math.random() * 20;
       const civ = new Civilian(this, nx, ny, i % 4);
+      civ.setScale(2.0);
       civ.setDepth(50);
       this.stationNPCs.push(civ);
     }
@@ -144,7 +130,7 @@ export class StationScene extends Phaser.Scene {
     if (this.inputManager.isActionPressed() && this.dialogueSystem && !this.dialogueSystem.isVisible()) {
       // Check for nearby interactable NPC
       for (const npc of this.stationNPCs) {
-        if (npc.interactable && Math.hypot(npc.x - px, npc.y - py) < 30) {
+        if (npc.interactable && Math.hypot(npc.x - px, npc.y - py) < 45) {
           this.dialogueSystem.show(npc.npcType, npc.getDialogue());
           this.inputManager.resetActionFlag();
           return;
@@ -152,12 +138,14 @@ export class StationScene extends Phaser.Scene {
       }
     }
 
+    const key = this.inputManager.isMobileDevice() ? 'TAP' : 'E';
+
     // Check proximity to exit
     const distToExit = Math.hypot(px - this.exitX, py - this.exitY);
-    if (distToExit < 25) {
+    if (distToExit < 45) {
       this.promptText?.setVisible(true);
-      this.promptText?.setPosition(px, py - 15);
-      this.promptText?.setText('Press ! to exit');
+      this.promptText?.setPosition(px, py - 28);
+      this.promptText?.setText(`Press ${key} to exit`);
 
       if (this.inputManager.isActionPressed()) {
         this.exitStation();
@@ -169,10 +157,10 @@ export class StationScene extends Phaser.Scene {
         px - this.cameras.main.width / 2,
         py - this.platformY
       );
-      if (distToPlatform < 30) {
+      if (distToPlatform < 55) {
         this.promptText?.setVisible(true);
-        this.promptText?.setPosition(px, py - 15);
-        this.promptText?.setText('Press ! for trains');
+        this.promptText?.setPosition(px, py - 28);
+        this.promptText?.setText(`Press ${key} for trains`);
 
         if (this.inputManager.isActionPressed()) {
           this.showDestinationMenu();

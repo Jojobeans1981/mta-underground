@@ -14,7 +14,7 @@ export const PLAYER_SPRINT_MULTIPLIER = 1.5;
 export const PLAYER_STAMINA_MAX = 100;
 export const PLAYER_STAMINA_DRAIN = 20;
 export const PLAYER_STAMINA_REGEN = 10;
-export const PLAYER_CATCH_RADIUS = 20;
+export const PLAYER_CATCH_RADIUS = 28;
 export const PLAYER_INTERACT_RADIUS = 30;
 
 // NPC

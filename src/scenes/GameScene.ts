@@ -47,6 +47,7 @@ import {
   WORLD_WIDTH,
   WORLD_HEIGHT,
   STATION_ENTRANCE_SIZE,
+  PLAYER_CATCH_RADIUS,
 } from '@/config/constants';
 import { Station, MissionDefinition } from '@/types/game.types';
 import { hexToNum, COLOR_UI_PRIMARY } from '@/graphics/colors';
@@ -98,6 +99,7 @@ export class GameScene extends Phaser.Scene {
   private nearMissTimer: number = 0;
 
   private stationPrompt: Phaser.GameObjects.Text | null = null;
+  private tacklePrompt: Phaser.GameObjects.Text | null = null;
   private missionNPCs: NPC[] = [];
   private missionMenuOpen: boolean = false;
   private playTimeAccumulator: number = 0;
@@ -227,6 +229,13 @@ export class GameScene extends Phaser.Scene {
       fontSize: '14px', color: '#ffffff', backgroundColor: '#000000cc',
       padding: { x: 8, y: 4 },
     }).setOrigin(0.5).setScrollFactor(0).setDepth(200).setVisible(false);
+
+    // Tackle prompt — hovers over a fleeing suspect during a pursuit
+    this.tacklePrompt = this.add.text(0, 0, '', {
+      fontSize: '16px', color: '#ff3b3b', fontStyle: 'bold',
+      backgroundColor: '#000000cc', padding: { x: 8, y: 4 },
+      stroke: '#000000', strokeThickness: 3,
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(205).setVisible(false);
 
     // Input
     this.inputManager.setup(this);
@@ -651,15 +660,10 @@ export class GameScene extends Phaser.Scene {
       this.missionManager.update(delta);
       this.game.registry.set('missionTimer', this.missionManager.getTimer());
 
-      // Pursuit system
-      if (this.pursuitSystem?.getIsActive()) {
-        this.pursuitSystem.update(this.player.x, this.player.y, delta);
-
-        const dist = this.pursuitSystem.getDistanceToTarget(this.player.x, this.player.y);
-        const intensity = 1 - Math.min(dist / 300, 1);
-        this.audioManager?.setMusicIntensity(intensity);
-
-        // Auto-spot fare evaders
+      // Auto-spot fare evaders — MUST run independently of getIsActive(), since
+      // spotting is what STARTS the pursuit. (Previously this was nested inside
+      // the getIsActive() guard, a deadlock that meant the chase never began.)
+      if (this.pursuitSystem) {
         for (const npc of this.missionNPCs) {
           if (npc instanceof FareEvader && !npc.hasBeenSpotted) {
             const npcDist = Math.hypot(npc.x - this.player.x, npc.y - this.player.y);
@@ -667,13 +671,37 @@ export class GameScene extends Phaser.Scene {
               npc.spot(this.player.x, this.player.y);
               this.pursuitSystem.startPursuit(npc);
 
-              // Dramatic spot effect
+              // Dramatic spot effect + clear instructions
               this.floatingText?.screenAnnounce('SUSPECT SPOTTED!', '#ff4444', '24px');
               this.screenFX?.flashRed(0.1, 200);
               this.cameras.main.shake(100, 0.004);
+              this.game.events.emit('radio.hint',
+                'He\'s running! Hold SHIFT to sprint and run straight into him to tackle.');
             }
           }
         }
+      }
+
+      // Pursuit system — runs the chase + catch detection while active
+      if (this.pursuitSystem?.getIsActive()) {
+        this.pursuitSystem.update(this.player.x, this.player.y, delta);
+
+        const dist = this.pursuitSystem.getDistanceToTarget(this.player.x, this.player.y);
+        const intensity = 1 - Math.min(dist / 300, 1);
+        this.audioManager?.setMusicIntensity(intensity);
+
+        // Discoverable "TACKLE" prompt that hovers over the suspect when in range
+        const target = this.pursuitSystem.getTarget();
+        if (target && this.tacklePrompt) {
+          const inRange = dist < PLAYER_CATCH_RADIUS * 2.6;
+          this.tacklePrompt
+            .setText(inRange ? 'TACKLE!' : 'RUN INTO SUSPECT')
+            .setColor(inRange ? '#ff3b3b' : '#ffd180')
+            .setPosition(toScreenX(target.x), toScreenY(target.y) - 34)
+            .setVisible(true);
+        }
+      } else if (this.tacklePrompt) {
+        this.tacklePrompt.setVisible(false);
       }
 
       // Patrol system
@@ -687,6 +715,7 @@ export class GameScene extends Phaser.Scene {
       }
     } else {
       this.game.registry.set('missionTimer', null);
+      this.tacklePrompt?.setVisible(false);
     }
 
     // Action button handling
@@ -988,6 +1017,7 @@ export class GameScene extends Phaser.Scene {
     this.trafficSystem = null;
     this.screenFX = null;
     this.livingCity = null;
+    this.tacklePrompt = null;
     this.specialAbility = null;
     this.envHazards = null;
     this.cinematicCamera = null;
@@ -1300,7 +1330,7 @@ export class GameScene extends Phaser.Scene {
       || next.description.toLowerCase().includes('stop at') || next.description.toLowerCase().includes('return')) {
       hint = `Follow the orange arrow to ${next.description.replace(/^(Reach |Visit |Stop at |Return to )/, '')}.`;
     } else if (next.description.toLowerCase().includes('catch') || next.description.toLowerCase().includes('chase')) {
-      hint = `Chase the suspect! Sprint with SHIFT and get close to catch them.`;
+      hint = `Find the SUSPECT (red marker), hold SHIFT to sprint, and run straight into them to tackle.`;
     } else if (next.description.toLowerCase().includes('search') || next.description.toLowerCase().includes('find')) {
       hint = `Look for the green glow near the station. Walk up and press E to investigate.`;
     } else if (next.description.toLowerCase().includes('talk') || next.description.toLowerCase().includes('check')) {

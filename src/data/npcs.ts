@@ -64,7 +64,9 @@ export const FARE_EVADER_DEFINITION: NPCDefinition = {
   id: 'fare_evader_base',
   type: 'fare_evader',
   spriteConfig: { shape: 'rect', primaryColor: '#c62828', secondaryColor: '#b71c1c', size: 10 },
-  speed: 140,
+  // Slower than the player's 120 walk (and far below the 180 sprint) so the gap
+  // always closes — the chase is winnable without perfect stamina management.
+  speed: 110,
   behaviorPattern: 'flee',
   interactable: false,
   dialogueLines: [],
