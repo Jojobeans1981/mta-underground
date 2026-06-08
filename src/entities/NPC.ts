@@ -37,6 +37,13 @@ export class NPC extends Entity {
   private speechBubble: Phaser.GameObjects.Text | null = null;
   private bubbleTimer: number = 0;
 
+  // Social: standing and chatting with another agent
+  inConversation: boolean = false;
+  private conversationTimer: number = 0;
+
+  // Persistent name tag for recognizable residents
+  private nameTag: Phaser.GameObjects.Text | null = null;
+
   constructor(scene: Phaser.Scene, x: number, y: number, definition: NPCDefinition, textureKey: string) {
     super(scene, x, y, textureKey, definition.id + '_' + Math.floor(Math.random() * 100000));
 
@@ -71,6 +78,18 @@ export class NPC extends Entity {
 
     // Tick any active speech bubble (independent of movement)
     this.tickBubble(dt);
+
+    // Standing in a conversation — hold still until it ends
+    if (this.inConversation) {
+      body.setVelocity(0, 0);
+      this.conversationTimer -= dt;
+      if (this.conversationTimer <= 0) {
+        this.inConversation = false;
+        this.isPaused = true;
+        this.pauseTimer = 0.4 + Math.random() * 0.6;
+      }
+      return;
+    }
 
     // Goal-seek runs even while "paused" so commuters keep heading to the train
     if (this.behaviorPattern === 'goal_seek') {
@@ -345,6 +364,49 @@ export class NPC extends Entity {
     }
   }
 
+  /** Stop and chat for a few seconds. Faces the partner if given. */
+  startConversation(durationSec: number, faceX?: number): void {
+    this.inConversation = true;
+    this.conversationTimer = durationSec;
+    this.behaviorPattern = this.originalBehavior;
+    this.currentTarget = null;
+    const body = this.body as Phaser.Physics.Arcade.Body;
+    if (body) body.setVelocity(0, 0);
+    if (faceX !== undefined && this.entitySprite) {
+      this.entitySprite.setFlipX(faceX < this.x);
+    }
+  }
+
+  /** Show a persistent name tag above the head (for recognizable residents). */
+  showNameTag(name: string): void {
+    if (!this.scene) return;
+    if (this.nameTag) {
+      if (this.nameTag.text !== name) this.nameTag.setText(name);
+      return;
+    }
+    const tag = this.scene.add.text(0, -7, name, {
+      fontSize: '16px',
+      color: '#ffe9a8',
+      align: 'center',
+      backgroundColor: '#00000099',
+      padding: { x: 4, y: 1 },
+    }).setOrigin(0.5, 1).setScale(0.085).setDepth(68).setAlpha(0);
+    this.add(tag);
+    this.nameTag = tag;
+    this.scene.tweens.add({ targets: tag, alpha: 0.9, duration: 200 });
+  }
+
+  hideNameTag(): void {
+    if (this.nameTag) {
+      this.nameTag.destroy();
+      this.nameTag = null;
+    }
+  }
+
+  hasNameTag(): boolean {
+    return this.nameTag !== null;
+  }
+
   getDialogue(): string {
     if (this.dialogueLines.length === 0) return '...';
     return this.dialogueLines[Math.floor(Math.random() * this.dialogueLines.length)];
@@ -392,7 +454,10 @@ export class NPC extends Entity {
     this.boarded = false;
     this.goalTarget = null;
     this.onGoalReached = null;
+    this.inConversation = false;
+    this.conversationTimer = 0;
     this.hideBubble();
+    this.hideNameTag();
 
     if (this.entitySprite) {
       this.entitySprite.setTexture(textureKey);
@@ -403,6 +468,8 @@ export class NPC extends Entity {
 
   deactivate(): void {
     this.hideBubble();
+    this.hideNameTag();
+    this.inConversation = false;
     super.deactivate();
   }
 }

@@ -16,10 +16,17 @@ export interface CityContext {
   sirenActive: boolean;       // a pursuit / chase is happening nearby
 }
 
+import { MAX_NPCS_VISIBLE } from '@/config/constants';
+
 const ASSIGN_INTERVAL = 0.4;   // seconds between persona-assignment sweeps
 const BUBBLE_INTERVAL = 1.4;   // seconds between ambient chatter bubbles
 const BUBBLE_RANGE = 150;      // only NPCs this close to the player chatter
 const REACT_RANGE = 46;        // police proximity that makes civilians react
+const CONVO_INTERVAL = 3.2;    // seconds between attempts to start a chat
+const CONVO_PAIR_RANGE = 26;   // how close two agents must be to chat
+const TAG_INTERVAL = 0.6;      // seconds between name-tag refreshes
+const TAG_RANGE = 120;         // agents this close to the player get a name tag
+const MAX_TAGS = 4;            // cap on simultaneous name tags
 
 /**
  * The "Living City" — a generative-agent layer over the existing NPC crowd.
@@ -36,6 +43,8 @@ export class LivingCitySystem {
   private entrances: { x: number; y: number }[] = [];
   private assignTimer = 0;
   private bubbleTimer = 0;
+  private convoTimer = CONVO_INTERVAL;
+  private tagTimer = 0;
 
   constructor(scene: Phaser.Scene, npcManager: NPCManager) {
     this.scene = scene;
@@ -57,6 +66,7 @@ export class LivingCitySystem {
     this.assignTimer -= dt;
     if (this.assignTimer <= 0) {
       this.assignTimer = ASSIGN_INTERVAL;
+      this.adjustDensity(ctx);
       this.assignPersonas(ctx);
     }
 
@@ -64,6 +74,95 @@ export class LivingCitySystem {
     if (this.bubbleTimer <= 0) {
       this.bubbleTimer = BUBBLE_INTERVAL;
       this.emitChatter(ctx);
+    }
+
+    this.convoTimer -= dt;
+    if (this.convoTimer <= 0) {
+      this.convoTimer = CONVO_INTERVAL;
+      this.tryStartConversation(ctx);
+    }
+
+    this.tagTimer -= dt;
+    if (this.tagTimer <= 0) {
+      this.tagTimer = TAG_INTERVAL;
+      this.refreshNameTags(ctx);
+    }
+  }
+
+  // ===== Rush-hour crowd density =====
+
+  /** Swell the crowd at rush hour, thin it out at night. */
+  private adjustDensity(ctx: CityContext): void {
+    const phase = this.phaseOf(ctx.timeOfDay);
+    let mul: number;
+    switch (phase) {
+      case 'morning': mul = 1.4; break;
+      case 'evening': mul = 1.35; break;
+      case 'midday':  mul = 1.0; break;
+      case 'dawn':    mul = 0.6; break;
+      case 'night':   mul = 0.5; break;
+      default:        mul = 1.0;
+    }
+    this.npcManager.setMaxActive(MAX_NPCS_VISIBLE * mul);
+  }
+
+  // ===== NPC-to-NPC conversations =====
+
+  /** Occasionally pair two nearby idle agents into a brief chat. */
+  private tryStartConversation(ctx: CityContext): void {
+    const avail = this.npcManager.getActiveNPCs().filter((n) =>
+      n.isActive && n.hasPersona() && !n.boarded && !n.inConversation &&
+      n.behaviorPattern !== 'goal_seek' && !n.hasBubble() &&
+      Math.hypot(n.x - ctx.playerX, n.y - ctx.playerY) < BUBBLE_RANGE
+    );
+    if (avail.length < 2) return;
+
+    // Find a close pair
+    for (let i = 0; i < avail.length; i++) {
+      for (let j = i + 1; j < avail.length; j++) {
+        const a = avail[i], b = avail[j];
+        if (Math.hypot(a.x - b.x, a.y - b.y) <= CONVO_PAIR_RANGE) {
+          this.runConversation(a, b);
+          return;
+        }
+      }
+    }
+  }
+
+  private runConversation(a: NPC, b: NPC): void {
+    const exchange = DialogueGenerator.socialExchange();
+    a.startConversation(4.0, b.x);
+    b.startConversation(4.0, a.x);
+    a.showBubble(exchange.opener);
+
+    // B replies a beat later, if both are still chatting
+    this.scene.time.delayedCall(1200, () => {
+      if (b.isActive && b.inConversation) {
+        b.showBubble(exchange.response);
+      }
+    });
+  }
+
+  // ===== Recognizable named residents =====
+
+  /** Keep name tags on the few nearest agents so the crowd has faces. */
+  private refreshNameTags(ctx: CityContext): void {
+    const all = this.npcManager.getActiveNPCs();
+    const near = all
+      .filter((n) => n.isActive && n.hasPersona() && !n.boarded &&
+        Math.hypot(n.x - ctx.playerX, n.y - ctx.playerY) < TAG_RANGE)
+      .sort((p, q) =>
+        Math.hypot(p.x - ctx.playerX, p.y - ctx.playerY) -
+        Math.hypot(q.x - ctx.playerX, q.y - ctx.playerY))
+      .slice(0, MAX_TAGS);
+
+    const tagged = new Set(near);
+    for (const npc of all) {
+      if (tagged.has(npc)) {
+        npc.showNameTag(npc.persona!.name);
+      } else if (npc.hasNameTag()) {
+        npc.hideNameTag();
+      }
     }
   }
 

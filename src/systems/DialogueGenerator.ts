@@ -114,6 +114,34 @@ export class DialogueGenerator {
     'That graffiti wasn\'t there yesterday.',
   ];
 
+  // --- Two-agent social exchanges (NPC-to-NPC) ---
+  private static readonly GREETINGS: string[] = [
+    'Hey! Long time no see.',
+    'Yo, you headed downtown too?',
+    'Did you catch the game last night?',
+    'You look like you\'re in a hurry.',
+    'This line is a mess today, right?',
+    'Wait — don\'t I know you?',
+    'You hear they\'re fixing the signals again?',
+  ];
+  private static readonly RESPONSES: string[] = [
+    'Ha, tell me about it.',
+    'Every single day, I swear.',
+    'Yeah, running late as usual.',
+    'Good to see you! Gotta run though.',
+    'Right? Same old story.',
+    'No way, what a coincidence.',
+    'Take care, catch you around.',
+  ];
+
+  /** A short two-line exchange between two agents. */
+  static socialExchange(): { opener: string; response: string } {
+    return {
+      opener: pick(this.GREETINGS),
+      response: pick(this.RESPONSES),
+    };
+  }
+
   /** Generate a single line for the given context. */
   static generate(ctx: DialogueContext): string {
     // Strong reactions take priority

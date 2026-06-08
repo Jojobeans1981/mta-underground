@@ -183,6 +183,11 @@ export class NPCManager {
     return this.activeNPCs.length;
   }
 
+  /** Adjust the target on-screen population (e.g. rush-hour swell). Clamped to the pool size. */
+  setMaxActive(n: number): void {
+    this.maxActive = Phaser.Math.Clamp(Math.round(n), 4, 28);
+  }
+
   getActiveNPCs(): NPC[] {
     return this.activeNPCs;
   }
