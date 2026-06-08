@@ -222,7 +222,8 @@ export type BehaviorPattern =
   | 'stationary'
   | 'flee'
   | 'follow_path'
-  | 'crowd';
+  | 'crowd'
+  | 'goal_seek';
 
 export interface NPCDefinition {
   id: string;

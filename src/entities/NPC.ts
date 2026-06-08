@@ -3,6 +3,7 @@ import { Entity } from '@/entities/Entity';
 import { NPCType, BehaviorPattern, NPCDefinition } from '@/types/game.types';
 import { WORLD_WIDTH, WORLD_HEIGHT, NPC_SIZE } from '@/config/constants';
 import { NPC_SPRITE_RES } from '@/graphics/SpriteFactory';
+import { AgentPersona, AgentMood, AgentIntent } from '@/data/personas';
 
 export class NPC extends Entity {
   npcType: NPCType;
@@ -12,6 +13,13 @@ export class NPC extends Entity {
   interactable: boolean;
   dialogueLines: string[];
 
+  // --- Living-City agent state ---
+  persona: AgentPersona | null = null;
+  mood: AgentMood = 'content';
+  intent: AgentIntent = 'idle';
+  /** Set true once the agent reaches a station and "boards" — flagged for despawn. */
+  boarded: boolean = false;
+
   private currentTarget: { x: number; y: number } | null = null;
   private behaviorTimer: number = 0;
   private pauseTimer: number = 0;
@@ -20,6 +28,14 @@ export class NPC extends Entity {
   private fleeFromY: number = 0;
   private dirChangeTimer: number = 0;
   private fleeAngleOffset: number = 0;
+
+  // Goal-seek (commute) state
+  private goalTarget: { x: number; y: number } | null = null;
+  private onGoalReached: (() => void) | null = null;
+
+  // Ambient speech bubble
+  private speechBubble: Phaser.GameObjects.Text | null = null;
+  private bubbleTimer: number = 0;
 
   constructor(scene: Phaser.Scene, x: number, y: number, definition: NPCDefinition, textureKey: string) {
     super(scene, x, y, textureKey, definition.id + '_' + Math.floor(Math.random() * 100000));
@@ -52,6 +68,15 @@ export class NPC extends Entity {
     const dt = delta / 1000;
     const body = this.body as Phaser.Physics.Arcade.Body;
     if (!body) return;
+
+    // Tick any active speech bubble (independent of movement)
+    this.tickBubble(dt);
+
+    // Goal-seek runs even while "paused" so commuters keep heading to the train
+    if (this.behaviorPattern === 'goal_seek') {
+      this.updateGoalSeek(dt, body);
+      return;
+    }
 
     // Handle pause between movements
     if (this.isPaused) {
@@ -233,6 +258,93 @@ export class NPC extends Entity {
     this.currentTarget.y = Phaser.Math.Clamp(this.currentTarget.y, 60, WORLD_HEIGHT - 60);
   }
 
+  // ===== Living-City agent behavior =====
+
+  /** Move toward a fixed goal (e.g. a station entrance). Fires a callback on arrival. */
+  private updateGoalSeek(dt: number, body: Phaser.Physics.Arcade.Body): void {
+    if (!this.goalTarget) {
+      body.setVelocity(0, 0);
+      return;
+    }
+    const dx = this.goalTarget.x - this.x;
+    const dy = this.goalTarget.y - this.y;
+    const dist = Math.hypot(dx, dy);
+
+    if (dist < 8) {
+      body.setVelocity(0, 0);
+      const cb = this.onGoalReached;
+      this.goalTarget = null;
+      this.onGoalReached = null;
+      if (cb) cb();
+      return;
+    }
+
+    const nx = dx / dist;
+    const ny = dy / dist;
+    body.setVelocity(nx * this.speed, ny * this.speed);
+    if (this.entitySprite) this.entitySprite.setFlipX(nx < -0.1);
+  }
+
+  /** Assign a persona, mood and intent. A speed multiplier reflects urgency. */
+  assignAgent(persona: AgentPersona, mood: AgentMood, intent: AgentIntent, speedMul: number): void {
+    this.persona = persona;
+    this.mood = mood;
+    this.intent = intent;
+    this.speed = Math.max(20, this.speed * speedMul);
+  }
+
+  /** Send the agent toward a world point; `onReached` fires once on arrival. */
+  setGoal(x: number, y: number, onReached: () => void): void {
+    this.goalTarget = { x, y };
+    this.onGoalReached = onReached;
+    this.behaviorPattern = 'goal_seek';
+    this.isPaused = false;
+  }
+
+  hasPersona(): boolean {
+    return this.persona !== null;
+  }
+
+  /** Show a small floating speech bubble above the NPC for a few seconds. */
+  showBubble(text: string): void {
+    if (!this.scene) return;
+    this.hideBubble();
+    const bubble = this.scene.add.text(0, -9, text, {
+      fontSize: '18px',
+      color: '#ffffff',
+      align: 'center',
+      backgroundColor: '#000000cc',
+      padding: { x: 6, y: 3 },
+      wordWrap: { width: 320 },
+    }).setOrigin(0.5, 1).setScale(0.11).setDepth(70);
+    this.add(bubble);
+    this.speechBubble = bubble;
+    this.bubbleTimer = 2.6 + Math.min(text.length, 60) * 0.03;
+    // Pop-in
+    bubble.setAlpha(0);
+    this.scene.tweens.add({ targets: bubble, alpha: 1, duration: 150 });
+  }
+
+  hasBubble(): boolean {
+    return this.speechBubble !== null;
+  }
+
+  private hideBubble(): void {
+    if (this.speechBubble) {
+      this.speechBubble.destroy();
+      this.speechBubble = null;
+    }
+    this.bubbleTimer = 0;
+  }
+
+  private tickBubble(dt: number): void {
+    if (!this.speechBubble) return;
+    this.bubbleTimer -= dt;
+    if (this.bubbleTimer <= 0) {
+      this.hideBubble();
+    }
+  }
+
   getDialogue(): string {
     if (this.dialogueLines.length === 0) return '...';
     return this.dialogueLines[Math.floor(Math.random() * this.dialogueLines.length)];
@@ -273,9 +385,24 @@ export class NPC extends Entity {
     this.isPaused = true;
     this.pauseTimer = Math.random() * 2;
 
+    // Reset agent brain so a recycled NPC gets a fresh life
+    this.persona = null;
+    this.mood = 'content';
+    this.intent = 'idle';
+    this.boarded = false;
+    this.goalTarget = null;
+    this.onGoalReached = null;
+    this.hideBubble();
+
     if (this.entitySprite) {
       this.entitySprite.setTexture(textureKey);
       this.entitySprite.setScale(NPC_SIZE / NPC_SPRITE_RES);
+      this.entitySprite.setAlpha(1);
     }
+  }
+
+  deactivate(): void {
+    this.hideBubble();
+    super.deactivate();
   }
 }

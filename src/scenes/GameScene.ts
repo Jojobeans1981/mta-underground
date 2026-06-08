@@ -30,6 +30,7 @@ import { DailyChallengeSystem } from '@/systems/DailyChallengeSystem';
 import { AchievementSystem } from '@/systems/AchievementSystem';
 import { LeaderboardSystem } from '@/systems/LeaderboardSystem';
 import { GraffitiSystem } from '@/systems/GraffitiSystem';
+import { LivingCitySystem } from '@/systems/LivingCitySystem';
 import { ParticleEffects } from '@/systems/ParticleEffects';
 import { FloatingTextSystem } from '@/systems/FloatingTextSystem';
 import { StreakAnnouncer } from '@/systems/StreakAnnouncer';
@@ -100,6 +101,10 @@ export class GameScene extends Phaser.Scene {
   private missionNPCs: NPC[] = [];
   private missionMenuOpen: boolean = false;
   private playTimeAccumulator: number = 0;
+
+  // Living-City generative-agent system
+  private livingCity: LivingCitySystem | null = null;
+  private playerIsPolice: boolean = false;
 
   // Graffiti tag system
   private graffitiSystem: GraffitiSystem | null = null;
@@ -241,6 +246,13 @@ export class GameScene extends Phaser.Scene {
     this.patrolSystem = new PatrolSystem(this);
     this.weatherSystem = new WeatherSystem(this);
     this.weatherSystem.init();
+
+    // Living-City generative-agent layer over the street crowd
+    this.playerIsPolice = playerClass === 'police';
+    this.livingCity = new LivingCitySystem(this, this.npcManager);
+    if (this.mapManager?.currentDistrict) {
+      this.livingCity.init(this.mapManager.currentDistrict.stations);
+    }
 
     // Graffiti system
     this.graffitiSystem = new GraffitiSystem(this);
@@ -473,6 +485,18 @@ export class GameScene extends Phaser.Scene {
     this.dayNightSystem?.update(delta);
     this.weatherSystem?.update(delta);
     this.screenFX?.update(delta);
+
+    // Living-City agents — schedules, moods, chatter, subway boarding
+    if (this.livingCity && this.player) {
+      this.livingCity.update(delta, {
+        playerX: this.player.x,
+        playerY: this.player.y,
+        playerIsPolice: this.playerIsPolice,
+        timeOfDay: this.dayNightSystem?.getTimeOfDay() ?? 0.4,
+        weather: (this.weatherSystem?.getWeather() ?? 'clear') as 'clear' | 'rain' | 'snow' | 'fog',
+        sirenActive: this.pursuitSystem?.getIsActive() ?? false,
+      });
+    }
 
     // === TRAFFIC ===
     this.trafficSystem?.update(delta);
@@ -713,7 +737,20 @@ export class GameScene extends Phaser.Scene {
     if (actionPressed && !this.nearStation && this.npcManager && this.dialogueSystem) {
       const npc = this.npcManager.getInteractableNPC(this.player.x, this.player.y);
       if (npc && !this.dialogueSystem.isVisible()) {
-        this.dialogueSystem.show(npc.npcType, npc.getDialogue());
+        // Living-City civilians get a generated, context-aware line + persona
+        if (npc.npcType === 'civilian' && this.livingCity) {
+          const talk = this.livingCity.talkTo(npc, {
+            playerX: this.player.x,
+            playerY: this.player.y,
+            playerIsPolice: this.playerIsPolice,
+            timeOfDay: this.dayNightSystem?.getTimeOfDay() ?? 0.4,
+            weather: (this.weatherSystem?.getWeather() ?? 'clear') as 'clear' | 'rain' | 'snow' | 'fog',
+            sirenActive: this.pursuitSystem?.getIsActive() ?? false,
+          });
+          this.dialogueSystem.showAgent(talk.name, talk.line, talk.moodLabel);
+        } else {
+          this.dialogueSystem.show(npc.npcType, npc.getDialogue());
+        }
         this.audioManager?.playSFX('npc_interact');
 
         if (this.missionManager?.isActive()) {
@@ -941,6 +978,7 @@ export class GameScene extends Phaser.Scene {
     this.powerUpSystem = null;
     this.trafficSystem = null;
     this.screenFX = null;
+    this.livingCity = null;
     this.specialAbility = null;
     this.envHazards = null;
     this.cinematicCamera = null;

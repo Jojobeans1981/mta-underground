@@ -65,9 +65,19 @@ export class DialogueSystem {
 
   show(npcType: NPCType, line: string): void {
     if (this.isShowing) return;
-
     const label = NPC_TYPE_LABELS[npcType] ?? 'Unknown';
-    this.nameText.setText(label);
+    this.present(label, line);
+  }
+
+  /** Show dialogue for a Living-City agent with a custom name + mood tag. */
+  showAgent(name: string, line: string, moodLabel?: string): void {
+    if (this.isShowing) return;
+    const header = moodLabel ? `${name}  ·  ${moodLabel}` : name;
+    this.present(header, line);
+  }
+
+  private present(header: string, line: string): void {
+    this.nameText.setText(header);
     this.dialogueText.setText('"' + line + '"');
 
     this.container.setVisible(true);
