@@ -349,9 +349,17 @@ export class GameScene extends Phaser.Scene {
 
     this.inputManager.update();
 
+    // Block input while mission menu / brief overlay scenes are open.
+    // Check scene activity directly — event-based flag resets are unreliable
+    // with async scene loading.
     if (this.missionMenuOpen) {
-      this.inputManager.resetActionFlag();
-      return;
+      const menuUp = this.scene.isActive('MissionSelectScene') || this.scene.isActive('MissionBriefScene');
+      if (!menuUp) {
+        this.missionMenuOpen = false;
+      } else {
+        this.inputManager.resetActionFlag();
+        return;
+      }
     }
 
     const dir = this.inputManager.getDirection();
@@ -608,7 +616,7 @@ export class GameScene extends Phaser.Scene {
         if (this.missionManager?.isActive()) {
           this.transitionToStation(this.nearStation.id);
         } else {
-          void this.showMissionSelect(this.nearStation);
+          this.showMissionSelect(this.nearStation);
         }
         this.nearStation = null;
         this.inputManager.resetActionFlag();
@@ -758,15 +766,9 @@ export class GameScene extends Phaser.Scene {
 
   // === Mission Select ===
 
-  private async showMissionSelect(station: Station): Promise<void> {
+  private showMissionSelect(station: Station): void {
     this.missionMenuOpen = true;
-
-    // Must await so the scene is registered before we attach the shutdown listener
-    await this.loadAndLaunchScene('MissionSelectScene', { stationName: station.name, stationId: station.id });
-
-    this.scene.get('MissionSelectScene')?.events.once('shutdown', () => {
-      this.missionMenuOpen = false;
-    });
+    void this.loadAndLaunchScene('MissionSelectScene', { stationName: station.name, stationId: station.id });
 
     this.game.events.once('enterStationFromMenu', (stationId: string) => {
       this.missionMenuOpen = false;
