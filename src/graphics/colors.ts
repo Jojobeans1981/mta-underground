@@ -1,13 +1,35 @@
-// Environment
-export const COLOR_ASPHALT = '#2c2c2c';
-export const COLOR_SIDEWALK = '#888888';
-export const COLOR_BUILDING_1 = '#4a3728';
-export const COLOR_BUILDING_2 = '#5c6670';
-export const COLOR_BUILDING_3 = '#3d4f5f';
-export const COLOR_BUILDING_4 = '#8b7355';
-export const COLOR_GRASS = '#2d5a27';
-export const COLOR_WATER = '#1a4a6e';
+// Environment — modern "night city" palette: cool deep tones, richer contrast
+export const COLOR_ASPHALT = '#23242e';
+export const COLOR_SIDEWALK = '#6f7480';
+export const COLOR_BUILDING_1 = '#3a3550';
+export const COLOR_BUILDING_2 = '#2e4a5c';
+export const COLOR_BUILDING_3 = '#3d3a4f';
+export const COLOR_BUILDING_4 = '#4a4360';
+export const COLOR_GRASS = '#1f5a3a';
+export const COLOR_WATER = '#16455f';
 export const COLOR_TREE = '#1b4d2e';
+
+// Ambient ground / night-time base tones (used for gradients & glow)
+export const COLOR_GROUND_BASE = '#0e0e16';
+export const COLOR_GROUND_GLOW = '#1a1c2e';
+
+// Neon accents — vivid signage / lighting glow colors
+export const COLOR_NEON_PINK = '#ff2d95';
+export const COLOR_NEON_CYAN = '#19e6ff';
+export const COLOR_NEON_PURPLE = '#9d4dff';
+export const COLOR_NEON_GREEN = '#39ff88';
+export const COLOR_NEON_AMBER = '#ffb031';
+export const COLOR_NEON_BLUE = '#3b7bff';
+export const NEON_PALETTE = [
+  COLOR_NEON_PINK,
+  COLOR_NEON_CYAN,
+  COLOR_NEON_PURPLE,
+  COLOR_NEON_GREEN,
+  COLOR_NEON_AMBER,
+  COLOR_NEON_BLUE,
+];
+export const COLOR_WINDOW_LIT = '#ffe9a8';
+export const COLOR_PUDDLE = '#2a4a6e';
 
 // Station
 export const COLOR_STATION_WALL = '#555555';

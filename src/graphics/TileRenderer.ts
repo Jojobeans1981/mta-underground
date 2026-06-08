@@ -12,19 +12,38 @@ import {
   COLOR_TREE,
   COLOR_UI_SECONDARY,
   COLOR_UI_PRIMARY,
+  COLOR_GROUND_BASE,
+  COLOR_GROUND_GLOW,
+  COLOR_PUDDLE,
+  COLOR_WINDOW_LIT,
+  NEON_PALETTE,
 } from '@/graphics/colors';
 import { STATION_ENTRANCE_SIZE } from '@/config/constants';
 
 const BUILDING_COLORS = [COLOR_BUILDING_1, COLOR_BUILDING_2, COLOR_BUILDING_3, COLOR_BUILDING_4];
+const NEON_NUMS = NEON_PALETTE.map(hexToNum);
 
 export class TileRenderer {
   static renderDistrict(scene: Phaser.Scene, district: District): Phaser.GameObjects.Container {
     const container = scene.add.container(0, 0);
     const b = district.bounds;
 
-    // 1. Dark ground
-    const bg = scene.add.rectangle(b.x + b.width / 2, b.y + b.height / 2, b.width, b.height, 0x111118);
+    // 1. Ground — deep base with soft radial ambient glow pools for a lit night look
+    const bg = scene.add.rectangle(b.x + b.width / 2, b.y + b.height / 2, b.width, b.height, hexToNum(COLOR_GROUND_BASE));
     container.add(bg);
+
+    // Ambient glow pools scattered across the map (large, very soft) — fakes city light bloom
+    const glowNum = hexToNum(COLOR_GROUND_GLOW);
+    const poolCols = 4;
+    const poolRows = 4;
+    for (let gx = 0; gx < poolCols; gx++) {
+      for (let gy = 0; gy < poolRows; gy++) {
+        const px = b.x + (gx + 0.5) * (b.width / poolCols);
+        const py = b.y + (gy + 0.5) * (b.height / poolRows);
+        const pool = scene.add.ellipse(px, py, b.width / poolCols * 1.4, b.height / poolRows * 1.4, glowNum, 0.5);
+        container.add(pool);
+      }
+    }
 
     // 2. Streets with details
     for (const seg of district.streetGrid) {
@@ -49,15 +68,36 @@ export class TileRenderer {
 
       if (seg.type === 'road') {
         // Asphalt with subtle texture variation
-        const road = scene.add.rectangle(rx, ry, rw, rh, 0x2a2a2a);
+        const road = scene.add.rectangle(rx, ry, rw, rh, hexToNum(COLOR_ASPHALT));
         container.add(road);
 
         // Subtle road texture (random dark spots)
         for (let t = 0; t < Math.floor((rw + rh) / 20); t++) {
           const tx = rx + (Math.random() - 0.5) * (isHorizontal ? rw * 0.9 : rw * 0.6);
           const ty = ry + (Math.random() - 0.5) * (isHorizontal ? rh * 0.6 : rh * 0.9);
-          const spot = scene.add.rectangle(tx, ty, 2 + Math.random() * 3, 1, 0x222222, 0.3);
+          const spot = scene.add.rectangle(tx, ty, 2 + Math.random() * 3, 1, 0x15161d, 0.4);
           container.add(spot);
+        }
+
+        // Reflective neon puddles — wet-street look with a shimmering colored reflection
+        const puddleCount = Math.floor((rw + rh) / 140);
+        for (let p = 0; p < puddleCount; p++) {
+          const px = rx + (Math.random() - 0.5) * (isHorizontal ? rw * 0.85 : rw * 0.5);
+          const py = ry + (Math.random() - 0.5) * (isHorizontal ? rh * 0.5 : rh * 0.85);
+          const pw = 5 + Math.random() * 7;
+          const ph = pw * (0.45 + Math.random() * 0.2);
+          // Dark wet base
+          container.add(scene.add.ellipse(px, py, pw, ph, hexToNum(COLOR_PUDDLE), 0.45));
+          // Colored neon reflection streak that softly shimmers
+          const reflectColor = NEON_NUMS[Math.floor(Math.random() * NEON_NUMS.length)];
+          const reflect = scene.add.ellipse(px, py, pw * 0.55, ph * 0.5, reflectColor, 0.25);
+          container.add(reflect);
+          scene.tweens.add({
+            targets: reflect,
+            alpha: { from: 0.12, to: 0.32 },
+            duration: 1400 + Math.random() * 1200,
+            yoyo: true, repeat: -1,
+          });
         }
 
         // Center lane marking (dashed yellow line)
@@ -171,8 +211,8 @@ export class TileRenderer {
             const wx = cx - bw / 2 + 5 + wc * 8;
             const wy = cy - bh / 2 + 6 + wr * 8;
             const lit = ((wr * 7 + wc * 13 + i * 3 + j * 5) % 5) < 3;
-            const winCol = lit ? 0xfff9c4 : 0x333344;
-            const winAlpha = lit ? 0.6 : 0.3;
+            const winCol = lit ? hexToNum(COLOR_WINDOW_LIT) : 0x2a2c3e;
+            const winAlpha = lit ? 0.75 : 0.35;
             container.add(scene.add.rectangle(wx, wy, winW, winH, winCol, winAlpha));
           }
         }
@@ -181,6 +221,32 @@ export class TileRenderer {
         if ((i + j * 2) % 4 === 0 && bh > 30) {
           const awningColor = [0xe53935, 0x43a047, 0x1e88e5, 0xff8f00][Math.abs(i * 3 + j) % 4];
           container.add(scene.add.rectangle(cx, cy + bh / 2 - 3, bw * 0.6, 3, awningColor, 0.5));
+        }
+
+        // Cool rim-light along the top/left edges — fakes ambient sky/streetlight bounce
+        const rimColor = Phaser.Display.Color.IntegerToColor(bColor).lighten(40).color;
+        container.add(scene.add.rectangle(cx, cy - bh / 2 + 0.5, bw, 0.75, rimColor, 0.35));
+
+        // Neon storefront sign on roughly every 3rd building — glowing bar + soft halo
+        if ((i * 5 + j * 3) % 3 === 0 && bw > 22) {
+          const neon = NEON_NUMS[(i + j) % NEON_NUMS.length];
+          const signW = Math.min(bw * 0.7, 18);
+          const signY = cy - bh * 0.18;
+          // Soft halo behind the sign
+          const halo = scene.add.ellipse(cx, signY, signW * 1.8, 7, neon, 0.18);
+          container.add(halo);
+          // The neon bar itself
+          const sign = scene.add.rectangle(cx, signY, signW, 2.2, neon, 0.9);
+          sign.setStrokeStyle(0.4, 0xffffff, 0.6);
+          container.add(sign);
+          // Flicker / pulse so the city feels alive
+          scene.tweens.add({
+            targets: [sign, halo],
+            alpha: { from: 0.55, to: 1 },
+            duration: 900 + Math.random() * 1400,
+            yoyo: true, repeat: -1,
+            ease: 'Sine.easeInOut',
+          });
         }
       }
     }

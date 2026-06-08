@@ -90,9 +90,14 @@ export class SpriteFactory {
     const cx = s / 2;
     const cy = s / 2;
 
-    // Drop shadow (ellipse at feet)
-    g.fillStyle(0x000000, 0.25);
-    g.fillEllipse(cx, cy + s * 0.38, s * 0.5, s * 0.15);
+    // Soft drop shadow (ellipse at feet)
+    g.fillStyle(0x000000, 0.28);
+    g.fillEllipse(cx, cy + s * 0.38, s * 0.52, s * 0.16);
+
+    // Dark contrast backing so the character reads clearly on dark streets
+    g.fillStyle(0x000000, 0.35);
+    g.fillEllipse(cx, cy + s * 0.1, s * 0.48, s * 0.34);
+    g.fillCircle(cx, cy - s * 0.12, s * 0.25);
 
     // Feet (tiny, barely visible below body)
     g.fillStyle(0x222222);
@@ -131,6 +136,11 @@ export class SpriteFactory {
     const hairDark = Phaser.Display.Color.IntegerToColor(headColor).darken(20).color;
     g.fillStyle(hairDark, 0.5);
     g.fillEllipse(cx, cy - s * 0.1, s * 0.32, s * 0.08);
+
+    // Glossy specular highlight on the hair/hat (top-left) — modern 3D sheen
+    const hairLight = Phaser.Display.Color.IntegerToColor(headColor).lighten(45).color;
+    g.fillStyle(hairLight, 0.55);
+    g.fillEllipse(cx - s * 0.08, cy - s * 0.21, s * 0.12, s * 0.05);
 
     // Badge (police only — small gold diamond on chest)
     if (hasBadge && accentColor) {
@@ -201,29 +211,50 @@ export class SpriteFactory {
     const s = STATION_ENTRANCE_SIZE;
     const g = scene.make.graphics({ x: 0, y: 0 });
 
-    // Dark stairwell
-    g.fillStyle(0x1a1a2e);
-    g.fillRect(0, 0, s, s);
-
-    // Railing sides
-    g.fillStyle(hexToNum(COLOR_UI_SECONDARY));
-    g.fillRect(0, 0, 2, s);
-    g.fillRect(s - 2, 0, 2, s);
-
-    // Step lines
-    g.fillStyle(0x444466);
-    for (let i = 0; i < 5; i++) {
-      const y = 3 + i * (s / 5);
-      g.fillRect(2, y, s - 4, 1);
+    // Stairwell — gradient from dark mouth (top) fading deeper (bottom)
+    for (let i = 0; i < 6; i++) {
+      const shade = Phaser.Display.Color.IntegerToColor(0x12131f).lighten(i * 4).color;
+      g.fillStyle(shade);
+      g.fillRect(2, (i * s) / 6, s - 4, s / 6 + 1);
     }
 
-    // Top bar (entrance canopy)
-    g.fillStyle(hexToNum(COLOR_UI_PRIMARY));
-    g.fillRect(0, 0, s, 3);
+    // Recessed step lines, lit on the leading edge
+    for (let i = 0; i < 5; i++) {
+      const y = 3 + i * (s / 5);
+      g.fillStyle(0x000000, 0.5);
+      g.fillRect(3, y, s - 6, 1);
+      g.fillStyle(0x5a6488, 0.5);
+      g.fillRect(3, y + 1, s - 6, 0.5);
+    }
 
-    // Globe light
-    g.fillStyle(0x4caf50);
-    g.fillCircle(s / 2, 1.5, 2);
+    // Brushed-metal railing sides
+    g.fillStyle(0x9aa4bf);
+    g.fillRect(0, 0, 2, s);
+    g.fillRect(s - 2, 0, 2, s);
+    g.fillStyle(0xffffff, 0.4);
+    g.fillRect(0, 0, 0.6, s);
+    g.fillRect(s - 0.6, 0, 0.6, s);
+
+    // Entrance canopy — orange bar with a brighter top highlight
+    g.fillStyle(hexToNum(COLOR_UI_PRIMARY));
+    g.fillRect(0, 0, s, 3.5);
+    g.fillStyle(0xffd180, 0.7);
+    g.fillRect(0, 0, s, 1);
+
+    // Twin globe lights (NYC subway style — one green, one red)
+    g.fillStyle(0x39ff88, 0.3);
+    g.fillCircle(s * 0.32, 1.8, 3);
+    g.fillStyle(0x39ff88);
+    g.fillCircle(s * 0.32, 1.8, 1.6);
+    g.fillStyle(0xffffff, 0.8);
+    g.fillCircle(s * 0.32, 1.4, 0.6);
+
+    g.fillStyle(0xff3b3b, 0.3);
+    g.fillCircle(s * 0.68, 1.8, 3);
+    g.fillStyle(0xff3b3b);
+    g.fillCircle(s * 0.68, 1.8, 1.6);
+    g.fillStyle(0xffffff, 0.8);
+    g.fillCircle(s * 0.68, 1.4, 0.6);
 
     g.generateTexture('station_entrance', s, s);
     g.destroy();
