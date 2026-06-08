@@ -159,6 +159,10 @@ export class GameScene extends Phaser.Scene {
     this.cameras.main.startFollow(this.player, true, CAMERA_LERP, CAMERA_LERP);
     this.cameras.main.setZoom(autoZoom);
 
+    // Neon bloom — soft additive glow on the brightest pixels (neon signs,
+    // lit windows, headlights, station globes). WebGL-only; skipped on Canvas.
+    this.applyBloom();
+
     // Building collision
     this.buildingBodies = this.physics.add.staticGroup();
     const horizontalYs = [150, 250, 350, 450, 550, 650, 750];
@@ -379,6 +383,20 @@ export class GameScene extends Phaser.Scene {
       duration: 800,
       ease: 'Power2',
     });
+  }
+
+  /** Add a soft bloom post-FX to the world camera (WebGL only). */
+  private applyBloom(): void {
+    if (this.game.renderer.type !== Phaser.WEBGL) return;
+    const cam = this.cameras.main as Phaser.Cameras.Scene2D.Camera;
+    const fx = (cam as any).postFX;
+    if (!fx || typeof fx.addBloom !== 'function') return;
+    try {
+      // addBloom(color, offsetX, offsetY, blurStrength, strength, steps)
+      fx.addBloom(0xffffff, 1, 1, 1, 0.85, 6);
+    } catch {
+      /* FX pipeline unavailable — degrade gracefully */
+    }
   }
 
   update(_time: number, delta: number): void {

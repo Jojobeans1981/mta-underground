@@ -89,6 +89,9 @@ export class TrafficSystem {
     const container = this.scene.add.container(x, y);
     container.setDepth(80);
 
+    // Projected headlight cone in the travel direction (bloom makes it glow)
+    this.addHeadlightCone(container, vx, vy);
+
     let carW: number, carH: number, color: number;
 
     if (isBus) {
@@ -167,6 +170,45 @@ export class TrafficSystem {
     }
 
     this.vehicles.push({ sprite: container, vx, vy, lane: 0 });
+  }
+
+  /**
+   * Draw a soft headlight cone projecting from the front of a vehicle in its
+   * direction of travel. Two stacked translucent triangles (wide + soft outer,
+   * narrow + brighter inner) plus a hot lamp core, so bloom reads it as a glow.
+   */
+  private addHeadlightCone(container: Phaser.GameObjects.Container, vx: number, vy: number): void {
+    if (!this.scene) return;
+    const horizontal = Math.abs(vx) >= Math.abs(vy);
+    const front = 4;   // distance from car center to the lamps
+    const len = 18;    // how far the beam reaches
+    const halfW = 6;   // half-width of the beam at its far end
+
+    // Apex (at the lamps) and the two far corners, oriented by travel direction
+    let ax: number, ay: number, b1x: number, b1y: number, b2x: number, b2y: number;
+    if (horizontal) {
+      const d = vx >= 0 ? 1 : -1;
+      ax = d * front; ay = 0;
+      b1x = d * (front + len); b1y = -halfW;
+      b2x = d * (front + len); b2y = halfW;
+    } else {
+      const d = vy >= 0 ? 1 : -1;
+      ax = 0; ay = d * front;
+      b1x = -halfW; b1y = d * (front + len);
+      b2x = halfW;  b2y = d * (front + len);
+    }
+
+    const g = this.scene.add.graphics();
+    // Wide soft outer cone
+    g.fillStyle(0xfff3c0, 0.10);
+    g.fillTriangle(ax, ay, b1x, b1y, b2x, b2y);
+    // Narrower, brighter inner cone (60% width/length)
+    g.fillStyle(0xfff7d6, 0.14);
+    g.fillTriangle(ax, ay, ax + (b1x - ax) * 0.62, ay + (b1y - ay) * 0.62, ax + (b2x - ax) * 0.62, ay + (b2y - ay) * 0.62);
+    // Hot lamp core at the apex
+    g.fillStyle(0xffffff, 0.85);
+    g.fillCircle(ax, ay, 1);
+    container.add(g);
   }
 
   /** Check if player is near a vehicle (for near-miss detection) */

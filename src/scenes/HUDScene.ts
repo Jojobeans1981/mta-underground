@@ -26,7 +26,6 @@ export class HUDScene extends Phaser.Scene {
   private notificationToast: NotificationToast | null = null;
   private fpsText: Phaser.GameObjects.Text | null = null;
   private escKey: Phaser.Input.Keyboard.Key | null = null;
-  private vignette: Phaser.GameObjects.Graphics | null = null;
 
   constructor() {
     super({ key: 'HUDScene' });
@@ -36,9 +35,6 @@ export class HUDScene extends Phaser.Scene {
     const economyManager = this.game.registry.get('economyManager') as EconomyManager | undefined;
     const progressionManager = this.game.registry.get('progressionManager') as ProgressionManager | undefined;
     const audioManager = this.game.registry.get('audioManager') as AudioManager | undefined;
-
-    // Cinematic screen-space vignette + cool color grade (drawn under all HUD elements)
-    this.createVignette();
 
     // Minimap — pass subway lines so route connections are drawn
     const mapManager = this.game.registry.get('mapManager') as MapManager;
@@ -182,40 +178,6 @@ export class HUDScene extends Phaser.Scene {
 
     // Ensure HUD renders on top
     this.scene.bringToTop();
-  }
-
-  /** Cinematic vignette + subtle cool grade that darkens the screen corners. */
-  private createVignette(): void {
-    const draw = () => {
-      const { width, height } = this.cameras.main;
-      if (this.vignette) this.vignette.destroy();
-      const g = this.add.graphics().setScrollFactor(0).setDepth(50);
-
-      // Layered border darkening — heavier in the corners for a lens-vignette feel.
-      // Kept moderate so the play-area edges stay readable in this top-down game.
-      const steps = 14;
-      const maxInset = Math.min(width, height) * 0.22;
-      for (let i = 0; i < steps; i++) {
-        const t = i / steps;
-        const inset = t * maxInset;
-        const alpha = Math.pow(1 - t, 1.7) * 0.36;
-        g.fillStyle(0x05060c, alpha);
-        g.fillRect(0, 0, width, inset);
-        g.fillRect(0, height - inset, width, inset);
-        g.fillRect(0, 0, inset, height);
-        g.fillRect(width - inset, 0, inset, height);
-      }
-
-      // Faint cool tint over the whole frame for a graded, modern night look
-      g.fillStyle(0x1b2a4a, 0.06);
-      g.fillRect(0, 0, width, height);
-
-      this.vignette = g;
-    };
-
-    draw();
-    this.scale.on('resize', draw);
-    this.events.once('shutdown', () => this.scale.off('resize', draw));
   }
 
   private async loadAndLaunchScene(key: SceneKey, data?: any): Promise<void> {

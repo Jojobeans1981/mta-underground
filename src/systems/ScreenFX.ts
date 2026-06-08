@@ -25,20 +25,23 @@ export class ScreenFX {
     this.vignetteGraphics = this.scene.add.graphics();
     this.vignetteGraphics.setScrollFactor(0).setDepth(850);
 
-    // Dark corners gradient (radial approximation with rectangles)
-    const steps = 8;
+    // Faint cool color-grade across the whole frame for a modern night look
+    this.vignetteGraphics.fillStyle(0x16223f, 0.07);
+    this.vignetteGraphics.fillRect(0, 0, width, height);
+
+    // Cinematic corner darkening — smooth falloff, tuned to keep the
+    // top-down play area readable while still framing the screen.
+    const steps = 12;
+    const maxInset = Math.min(width, height) * 0.24;
     for (let i = 0; i < steps; i++) {
-      const alpha = (i / steps) * 0.3;
-      const shrink = i * (Math.min(width, height) / (steps * 2));
-      // Top
-      this.vignetteGraphics.fillStyle(0x000000, alpha);
-      this.vignetteGraphics.fillRect(0, 0, width, shrink);
-      // Bottom
-      this.vignetteGraphics.fillRect(0, height - shrink, width, shrink);
-      // Left
-      this.vignetteGraphics.fillRect(0, 0, shrink, height);
-      // Right
-      this.vignetteGraphics.fillRect(width - shrink, 0, shrink, height);
+      const t = i / steps;
+      const alpha = Math.pow(1 - t, 1.7) * 0.4;
+      const inset = t * maxInset;
+      this.vignetteGraphics.fillStyle(0x05060c, alpha);
+      this.vignetteGraphics.fillRect(0, 0, width, inset);
+      this.vignetteGraphics.fillRect(0, height - inset, width, inset);
+      this.vignetteGraphics.fillRect(0, 0, inset, height);
+      this.vignetteGraphics.fillRect(width - inset, 0, inset, height);
     }
   }
 
