@@ -41,8 +41,10 @@ export class StationScene extends Phaser.Scene {
     this.currentStation = this.mapManager.getStation(data.stationId);
     if (!this.currentStation) return;
 
-    // Render station (now fills the screen at zoom 1)
-    const result = StationRenderer.renderStation(this, this.currentStation);
+    // Render station (now fills the screen at zoom 1), tinted by its line color
+    const firstLineId = this.currentStation.lineIds[0];
+    const servingLine = this.mapManager.subwayLines.find((l) => l.id === firstLineId);
+    const result = StationRenderer.renderStation(this, this.currentStation, servingLine?.color ?? '#FFD400');
     this.platformY = result.platformY;
     this.exitY = result.exitY;
     this.exitX = result.exitX;

@@ -186,6 +186,8 @@ export interface Platform {
 
 export interface SubwayLine {
   id: string;
+  /** Real-world line designation shown to the player, e.g. '1·2·3', 'A·C·E'. */
+  name: string;
   color: string;
   stationIds: string[];
 }

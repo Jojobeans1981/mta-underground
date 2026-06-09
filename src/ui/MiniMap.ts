@@ -163,15 +163,13 @@ export class MiniMap {
 
   /** Shorten station names so they fit on the minimap */
   private shortenName(name: string): string {
-    // Remove common prefixes/suffixes and abbreviate
-    return name
-      .replace('Grand Central', 'Grand Cntrl')
-      .replace('Times Square', 'Times Sq')
-      .replace('Penn Station', 'Penn Stn')
-      .replace('Union Square', 'Union Sq')
-      .replace('City Hall', 'City Hall')
+    // Take the primary part before an en-dash cross-street, trim generic words
+    let s = name.split('–')[0].trim()
       .replace(' Station', '')
-      .replace(' Terminal', '');
+      .replace(' Terminal', '')
+      .replace('Avenue', 'Av');
+    if (s.length > 13) s = s.slice(0, 12) + '…';
+    return s;
   }
 
   update(playerX: number, playerY: number): void {

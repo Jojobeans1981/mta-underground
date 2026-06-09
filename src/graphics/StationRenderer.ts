@@ -38,7 +38,8 @@ export class StationRenderer {
 
   static renderStation(
     scene: Phaser.Scene,
-    station: Station
+    station: Station,
+    signColor: string = '#FFD400'
   ): {
     container: Phaser.GameObjects.Container;
     platformY: number; exitY: number; exitX: number;
@@ -91,12 +92,8 @@ export class StationRenderer {
       container.add(scene.add.rectangle(tx, turnstileY, 26, 4, 0x333333));   // arm slot
     }
 
-    // Station sign (top) colored by the first subway line
-    const lineColor = station.lineIds[0] === 'line_red' ? '#FF4444'
-      : station.lineIds[0] === 'line_blue' ? '#4444FF'
-      : station.lineIds[0] === 'line_green' ? '#44FF44'
-      : station.lineIds[0] === 'line_orange' ? '#FF8800'
-      : '#FFD400';
+    // Station sign (top) colored by the serving subway line (passed in)
+    const lineColor = signColor;
     const signW = Math.min(W * 0.6, 560);
     container.add(scene.add.rectangle(cx, top + 34, signW, 50, 0x0b0b14));
     container.add(scene.add.rectangle(cx, top + 34, signW, 50, hexToNum(lineColor), 0.18));

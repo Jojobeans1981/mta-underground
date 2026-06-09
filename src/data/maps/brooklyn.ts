@@ -3,21 +3,21 @@ import { District, Station, SubwayLine, Landmark, StreetSegment } from '@/types/
 const stations: Station[] = [
   {
     id: 'brooklyn_atlantic',
-    name: 'Atlantic Ave',
+    name: 'Atlantic Av–Barclays',
     position: { x: 300, y: 200 },
     entrances: [{ x: 310, y: 215 }, { x: 290, y: 215 }],
     platforms: [{ id: 'brooklyn_atlantic_platform', position: { x: 300, y: 200 }, width: 60, trackSide: 'south' }],
     connections: ['brooklyn_dekalb', 'brooklyn_prospect'],
-    lineIds: ['line_orange', 'line_purple'],
+    lineIds: ['line_d', 'line_q'],
   },
   {
     id: 'brooklyn_dekalb',
-    name: 'DeKalb Ave',
+    name: 'DeKalb Av',
     position: { x: 500, y: 300 },
     entrances: [{ x: 510, y: 315 }, { x: 490, y: 315 }],
     platforms: [{ id: 'brooklyn_dekalb_platform', position: { x: 500, y: 300 }, width: 60, trackSide: 'south' }],
     connections: ['brooklyn_atlantic', 'brooklyn_fulton'],
-    lineIds: ['line_orange'],
+    lineIds: ['line_d'],
   },
   {
     id: 'brooklyn_fulton',
@@ -26,7 +26,7 @@ const stations: Station[] = [
     entrances: [{ x: 710, y: 415 }, { x: 690, y: 415 }],
     platforms: [{ id: 'brooklyn_fulton_platform', position: { x: 700, y: 400 }, width: 60, trackSide: 'east' }],
     connections: ['brooklyn_dekalb', 'brooklyn_nostrand'],
-    lineIds: ['line_orange', 'line_teal'],
+    lineIds: ['line_d', 'line_ac'],
   },
   {
     id: 'brooklyn_prospect',
@@ -35,23 +35,23 @@ const stations: Station[] = [
     entrances: [{ x: 210, y: 515 }, { x: 190, y: 515 }],
     platforms: [{ id: 'brooklyn_prospect_platform', position: { x: 200, y: 500 }, width: 60, trackSide: 'west' }],
     connections: ['brooklyn_atlantic', 'brooklyn_nostrand'],
-    lineIds: ['line_purple'],
+    lineIds: ['line_q'],
   },
   {
     id: 'brooklyn_nostrand',
-    name: 'Nostrand Ave',
+    name: 'Nostrand Av',
     position: { x: 500, y: 650 },
     entrances: [{ x: 510, y: 665 }, { x: 490, y: 665 }],
     platforms: [{ id: 'brooklyn_nostrand_platform', position: { x: 500, y: 650 }, width: 60, trackSide: 'north' }],
     connections: ['brooklyn_fulton', 'brooklyn_prospect'],
-    lineIds: ['line_purple', 'line_teal'],
+    lineIds: ['line_q', 'line_ac'],
   },
 ];
 
 export const BROOKLYN_SUBWAY_LINES: SubwayLine[] = [
-  { id: 'line_orange', color: '#FF8C00', stationIds: ['brooklyn_atlantic', 'brooklyn_dekalb', 'brooklyn_fulton'] },
-  { id: 'line_purple', color: '#9C27B0', stationIds: ['brooklyn_atlantic', 'brooklyn_prospect', 'brooklyn_nostrand'] },
-  { id: 'line_teal', color: '#009688', stationIds: ['brooklyn_fulton', 'brooklyn_nostrand'] },
+  { id: 'line_d', name: 'D', color: '#FF6319', stationIds: ['brooklyn_atlantic', 'brooklyn_dekalb', 'brooklyn_fulton'] },
+  { id: 'line_q', name: 'Q', color: '#FCCC0A', stationIds: ['brooklyn_atlantic', 'brooklyn_prospect', 'brooklyn_nostrand'] },
+  { id: 'line_ac', name: 'A·C', color: '#0039A6', stationIds: ['brooklyn_fulton', 'brooklyn_nostrand'] },
 ];
 
 const landmarks: Landmark[] = [

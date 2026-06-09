@@ -179,8 +179,7 @@ export class FullMapScene extends Phaser.Scene {
     const legendY = height - 18;
     const legendItems: { label: string; color: string }[] = [];
     for (const line of subwayLines) {
-      const lineName = line.id.replace('line_', '').toUpperCase();
-      legendItems.push({ label: `${lineName} Line`, color: line.color });
+      legendItems.push({ label: `${line.name} Train`, color: line.color });
     }
 
     let legendX = padding;

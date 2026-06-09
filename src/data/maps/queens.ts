@@ -8,7 +8,7 @@ const stations: Station[] = [
     entrances: [{ x: 810, y: 215 }, { x: 790, y: 215 }],
     platforms: [{ id: 'queens_jamaica_platform', position: { x: 800, y: 200 }, width: 70, trackSide: 'south' }],
     connections: ['queens_sutphin', 'queens_hillside'],
-    lineIds: ['line_silver', 'line_bronze'],
+    lineIds: ['line_e', 'line_jz'],
   },
   {
     id: 'queens_sutphin',
@@ -17,41 +17,41 @@ const stations: Station[] = [
     entrances: [{ x: 510, y: 315 }, { x: 490, y: 315 }],
     platforms: [{ id: 'queens_sutphin_platform', position: { x: 500, y: 300 }, width: 60, trackSide: 'south' }],
     connections: ['queens_jamaica', 'queens_roosevelt'],
-    lineIds: ['line_silver'],
+    lineIds: ['line_e'],
   },
   {
     id: 'queens_roosevelt',
-    name: 'Roosevelt Ave',
+    name: 'Roosevelt Av–Jackson Hts',
     position: { x: 300, y: 450 },
     entrances: [{ x: 310, y: 465 }, { x: 290, y: 465 }],
     platforms: [{ id: 'queens_roosevelt_platform', position: { x: 300, y: 450 }, width: 60, trackSide: 'east' }],
     connections: ['queens_sutphin', 'queens_woodside'],
-    lineIds: ['line_silver', 'line_copper'],
+    lineIds: ['line_e', 'line_7'],
   },
   {
     id: 'queens_hillside',
-    name: 'Hillside Ave',
+    name: 'Hillside Av',
     position: { x: 700, y: 550 },
     entrances: [{ x: 710, y: 565 }, { x: 690, y: 565 }],
     platforms: [{ id: 'queens_hillside_platform', position: { x: 700, y: 550 }, width: 60, trackSide: 'west' }],
     connections: ['queens_jamaica', 'queens_woodside'],
-    lineIds: ['line_bronze'],
+    lineIds: ['line_jz'],
   },
   {
     id: 'queens_woodside',
-    name: 'Woodside',
+    name: 'Woodside–61 St',
     position: { x: 400, y: 700 },
     entrances: [{ x: 410, y: 715 }, { x: 390, y: 715 }],
     platforms: [{ id: 'queens_woodside_platform', position: { x: 400, y: 700 }, width: 60, trackSide: 'north' }],
     connections: ['queens_roosevelt', 'queens_hillside'],
-    lineIds: ['line_copper', 'line_bronze'],
+    lineIds: ['line_7', 'line_jz'],
   },
 ];
 
 export const QUEENS_SUBWAY_LINES: SubwayLine[] = [
-  { id: 'line_silver', color: '#B0BEC5', stationIds: ['queens_jamaica', 'queens_sutphin', 'queens_roosevelt'] },
-  { id: 'line_bronze', color: '#CD7F32', stationIds: ['queens_jamaica', 'queens_hillside', 'queens_woodside'] },
-  { id: 'line_copper', color: '#B87333', stationIds: ['queens_roosevelt', 'queens_woodside'] },
+  { id: 'line_e', name: 'E', color: '#0039A6', stationIds: ['queens_jamaica', 'queens_sutphin', 'queens_roosevelt'] },
+  { id: 'line_jz', name: 'J·Z', color: '#996633', stationIds: ['queens_jamaica', 'queens_hillside', 'queens_woodside'] },
+  { id: 'line_7', name: '7', color: '#B933AD', stationIds: ['queens_roosevelt', 'queens_woodside'] },
 ];
 
 const landmarks: Landmark[] = [

@@ -3,12 +3,12 @@ import { District, Station, SubwayLine, Landmark, StreetSegment } from '@/types/
 const stations: Station[] = [
   {
     id: 'bronx_yankee',
-    name: 'Yankee Stadium',
+    name: '161 St–Yankee Stadium',
     position: { x: 250, y: 200 },
     entrances: [{ x: 260, y: 215 }, { x: 240, y: 215 }],
     platforms: [{ id: 'bronx_yankee_platform', position: { x: 250, y: 200 }, width: 60, trackSide: 'south' }],
     connections: ['bronx_fordham', 'bronx_concourse'],
-    lineIds: ['line_maroon', 'line_olive'],
+    lineIds: ['line_46', 'line_bd'],
   },
   {
     id: 'bronx_fordham',
@@ -17,7 +17,7 @@ const stations: Station[] = [
     entrances: [{ x: 510, y: 315 }, { x: 490, y: 315 }],
     platforms: [{ id: 'bronx_fordham_platform', position: { x: 500, y: 300 }, width: 60, trackSide: 'south' }],
     connections: ['bronx_yankee', 'bronx_pelham'],
-    lineIds: ['line_maroon'],
+    lineIds: ['line_46'],
   },
   {
     id: 'bronx_concourse',
@@ -26,32 +26,32 @@ const stations: Station[] = [
     entrances: [{ x: 210, y: 465 }, { x: 190, y: 465 }],
     platforms: [{ id: 'bronx_concourse_platform', position: { x: 200, y: 450 }, width: 60, trackSide: 'east' }],
     connections: ['bronx_yankee', 'bronx_hunts'],
-    lineIds: ['line_olive'],
+    lineIds: ['line_bd'],
   },
   {
     id: 'bronx_pelham',
-    name: 'Pelham Bay',
+    name: 'Pelham Bay Park',
     position: { x: 750, y: 500 },
     entrances: [{ x: 760, y: 515 }, { x: 740, y: 515 }],
     platforms: [{ id: 'bronx_pelham_platform', position: { x: 750, y: 500 }, width: 60, trackSide: 'west' }],
     connections: ['bronx_fordham', 'bronx_hunts'],
-    lineIds: ['line_maroon', 'line_slate'],
+    lineIds: ['line_46', 'line_6'],
   },
   {
     id: 'bronx_hunts',
-    name: 'Hunts Point',
+    name: 'Hunts Point Av',
     position: { x: 450, y: 700 },
     entrances: [{ x: 460, y: 715 }, { x: 440, y: 715 }],
     platforms: [{ id: 'bronx_hunts_platform', position: { x: 450, y: 700 }, width: 60, trackSide: 'north' }],
     connections: ['bronx_concourse', 'bronx_pelham'],
-    lineIds: ['line_olive', 'line_slate'],
+    lineIds: ['line_bd', 'line_6'],
   },
 ];
 
 export const BRONX_SUBWAY_LINES: SubwayLine[] = [
-  { id: 'line_maroon', color: '#800000', stationIds: ['bronx_yankee', 'bronx_fordham', 'bronx_pelham'] },
-  { id: 'line_olive', color: '#808000', stationIds: ['bronx_yankee', 'bronx_concourse', 'bronx_hunts'] },
-  { id: 'line_slate', color: '#708090', stationIds: ['bronx_pelham', 'bronx_hunts'] },
+  { id: 'line_46', name: '4·6', color: '#00933C', stationIds: ['bronx_yankee', 'bronx_fordham', 'bronx_pelham'] },
+  { id: 'line_bd', name: 'B·D', color: '#FF6319', stationIds: ['bronx_yankee', 'bronx_concourse', 'bronx_hunts'] },
+  { id: 'line_6', name: '6', color: '#00933C', stationIds: ['bronx_pelham', 'bronx_hunts'] },
 ];
 
 const landmarks: Landmark[] = [

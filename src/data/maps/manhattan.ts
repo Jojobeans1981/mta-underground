@@ -3,66 +3,67 @@ import { District, Station, SubwayLine, Landmark, StreetSegment } from '@/types/
 const stations: Station[] = [
   {
     id: 'manhattan_grand_central',
-    name: 'Grand Central',
+    name: 'Grand Central–42 St',
     position: { x: 500, y: 200 },
     entrances: [{ x: 510, y: 215 }, { x: 490, y: 215 }],
     platforms: [
       { id: 'manhattan_grand_central_platform', position: { x: 500, y: 200 }, width: 60, trackSide: 'south' },
     ],
     connections: ['manhattan_times_sq', 'manhattan_union_sq'],
-    lineIds: ['line_red', 'line_green'],
+    lineIds: ['line_456', 'line_7'],
   },
   {
     id: 'manhattan_times_sq',
-    name: 'Times Square',
+    name: 'Times Sq–42 St',
     position: { x: 300, y: 300 },
     entrances: [{ x: 310, y: 315 }, { x: 290, y: 315 }],
     platforms: [
       { id: 'manhattan_times_sq_platform', position: { x: 300, y: 300 }, width: 60, trackSide: 'south' },
     ],
     connections: ['manhattan_grand_central', 'manhattan_penn'],
-    lineIds: ['line_red', 'line_blue'],
+    lineIds: ['line_123', 'line_7'],
   },
   {
     id: 'manhattan_penn',
-    name: 'Penn Station',
+    name: '34 St–Penn Station',
     position: { x: 200, y: 400 },
     entrances: [{ x: 210, y: 415 }, { x: 190, y: 415 }],
     platforms: [
       { id: 'manhattan_penn_platform', position: { x: 200, y: 400 }, width: 60, trackSide: 'east' },
     ],
     connections: ['manhattan_times_sq'],
-    lineIds: ['line_blue'],
+    lineIds: ['line_123'],
   },
   {
     id: 'manhattan_union_sq',
-    name: 'Union Square',
+    name: '14 St–Union Sq',
     position: { x: 500, y: 500 },
     entrances: [{ x: 510, y: 515 }, { x: 490, y: 515 }],
     platforms: [
       { id: 'manhattan_union_sq_platform', position: { x: 500, y: 500 }, width: 60, trackSide: 'west' },
     ],
     connections: ['manhattan_grand_central', 'manhattan_city_hall'],
-    lineIds: ['line_green', 'line_yellow'],
+    lineIds: ['line_456', 'line_nqr'],
   },
   {
     id: 'manhattan_city_hall',
-    name: 'City Hall',
+    name: 'Brooklyn Bridge–City Hall',
     position: { x: 350, y: 700 },
     entrances: [{ x: 360, y: 715 }, { x: 340, y: 715 }],
     platforms: [
       { id: 'manhattan_city_hall_platform', position: { x: 350, y: 700 }, width: 60, trackSide: 'north' },
     ],
     connections: ['manhattan_union_sq'],
-    lineIds: ['line_yellow'],
+    lineIds: ['line_nqr'],
   },
 ];
 
+// Real MTA lines + authentic trunk-line colors
 export const MANHATTAN_SUBWAY_LINES: SubwayLine[] = [
-  { id: 'line_red', color: '#FF4444', stationIds: ['manhattan_grand_central', 'manhattan_times_sq'] },
-  { id: 'line_blue', color: '#4444FF', stationIds: ['manhattan_times_sq', 'manhattan_penn'] },
-  { id: 'line_green', color: '#44FF44', stationIds: ['manhattan_grand_central', 'manhattan_union_sq'] },
-  { id: 'line_yellow', color: '#FFFF44', stationIds: ['manhattan_union_sq', 'manhattan_city_hall'] },
+  { id: 'line_7', name: '7', color: '#B933AD', stationIds: ['manhattan_grand_central', 'manhattan_times_sq'] },
+  { id: 'line_123', name: '1·2·3', color: '#EE352E', stationIds: ['manhattan_times_sq', 'manhattan_penn'] },
+  { id: 'line_456', name: '4·5·6', color: '#00933C', stationIds: ['manhattan_grand_central', 'manhattan_union_sq'] },
+  { id: 'line_nqr', name: 'N·Q·R', color: '#FCCC0A', stationIds: ['manhattan_union_sq', 'manhattan_city_hall'] },
 ];
 
 const landmarks: Landmark[] = [
