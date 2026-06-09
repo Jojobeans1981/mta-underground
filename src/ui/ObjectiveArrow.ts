@@ -20,17 +20,27 @@ export class ObjectiveArrow {
     this.arrow.setDepth(950);
     this.arrow.setVisible(false);
 
-    this.arrowHead = scene.add.triangle(0, 0, 0, -8, 8, 8, -8, 8, hexToNum(COLOR_UI_PRIMARY));
-    this.arrowHead.setStrokeStyle(1, 0xffffff);
+    // Larger, outlined arrowhead so it stands out at the screen edge
+    this.arrowHead = scene.add.triangle(0, 0, 0, -15, 13, 13, -13, 13, hexToNum(COLOR_UI_PRIMARY));
+    this.arrowHead.setStrokeStyle(2.5, 0xffffff);
     this.arrow.add(this.arrowHead);
 
-    this.distanceText = scene.add.text(0, 14, '', {
-      fontSize: '8px', color: '#ffffff', fontStyle: 'bold',
+    // Attention pulse
+    scene.tweens.add({
+      targets: this.arrowHead,
+      scaleX: { from: 0.8, to: 1.2 }, scaleY: { from: 0.8, to: 1.2 },
+      duration: 600, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
+    });
+
+    this.distanceText = scene.add.text(0, 22, '', {
+      fontSize: '12px', color: '#ffffff', fontStyle: 'bold',
+      stroke: '#000000', strokeThickness: 3,
     }).setOrigin(0.5);
     this.arrow.add(this.distanceText);
 
-    this.labelText = scene.add.text(0, -14, '', {
-      fontSize: '7px', color: COLOR_UI_PRIMARY,
+    this.labelText = scene.add.text(0, -22, '', {
+      fontSize: '12px', color: COLOR_UI_PRIMARY, fontStyle: 'bold',
+      stroke: '#000000', strokeThickness: 3,
     }).setOrigin(0.5);
     this.arrow.add(this.labelText);
   }

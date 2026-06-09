@@ -19,7 +19,7 @@ export class MissionSelectScene extends Phaser.Scene {
     if (!save) { this.scene.stop(); return; }
 
     const playerClass = save.selectedClass;
-    const available = missionManager.getAvailableMissions(save.classes[playerClass]);
+    const available = missionManager.getAvailableMissions(save.classes[playerClass], playerClass);
 
     // Overlay background
     this.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0.6);

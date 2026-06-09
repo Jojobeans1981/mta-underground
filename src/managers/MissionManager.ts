@@ -1,4 +1,4 @@
-import { MissionDefinition, MissionObjective, ClassProgress, MissionRewards } from '@/types/game.types';
+import { MissionDefinition, MissionObjective, ClassProgress, MissionRewards, CharacterClass } from '@/types/game.types';
 import { GameEvents } from '@/types/events.types';
 import { SaveManager } from '@/managers/SaveManager';
 import { POLICE_MISSIONS } from '@/data/missions/police-missions';
@@ -29,9 +29,12 @@ export class MissionManager {
     this.allMissions = [...POLICE_MISSIONS, ...RIDER_MISSIONS, ...DRIVER_MISSIONS];
   }
 
-  getAvailableMissions(classProgress: ClassProgress): MissionDefinition[] {
+  getAvailableMissions(classProgress: ClassProgress, classKey: CharacterClass): MissionDefinition[] {
     return this.allMissions
       .filter((m) => {
+        // Only this character class's missions (each class plays its own borough)
+        if (m.classRequired !== classKey) return false;
+
         // Not already completed
         if (classProgress.completedMissionIds.includes(m.id)) return false;
 

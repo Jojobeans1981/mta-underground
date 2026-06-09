@@ -837,20 +837,30 @@ export class GameScene extends Phaser.Scene {
           pointed = true;
         }
 
-        // Fallback: find next incomplete reach_location objective station
+        // Fallback: find next incomplete objective's station
         if (!pointed) {
           const objectives = this.missionManager.getObjectiveProgress();
           const next = objectives.find(o => !o.completed && !o.optional);
           if (next) {
             const progress = this.missionManager.activeObjectives.get(next.id);
             if (progress) {
-              const targetId = progress.objective.targetId.replace('_platform', '');
-              const station = this.mapManager?.getStation(targetId);
+              const rawId = progress.objective.targetId;
+              const station = this.mapManager?.getStation(rawId.replace('_platform', ''))
+                ?? this.mapManager?.getStation(rawId);
               if (station) {
                 this.objectiveArrow.setTarget(station.position.x, station.position.y, station.name);
                 pointed = true;
               }
             }
+          }
+        }
+
+        // Last resort: never leave a mission without a pointer — aim at the nearest station
+        if (!pointed) {
+          const fallbackStation = this.findNearestStation();
+          if (fallbackStation) {
+            this.objectiveArrow.setTarget(fallbackStation.position.x, fallbackStation.position.y, fallbackStation.name);
+            pointed = true;
           }
         }
 
@@ -1328,7 +1338,8 @@ export class GameScene extends Phaser.Scene {
     let hint = '';
     if (next.description.toLowerCase().includes('reach') || next.description.toLowerCase().includes('visit')
       || next.description.toLowerCase().includes('stop at') || next.description.toLowerCase().includes('return')) {
-      hint = `Follow the orange arrow to ${next.description.replace(/^(Reach |Visit |Stop at |Return to )/, '')}.`;
+      const place = next.description.replace(/^(Reach |Visit |Stop at |Return to )/, '');
+      hint = `Head to ${place} — follow the pulsing orange arrow at the screen edge, or press TAB for the map.`;
     } else if (next.description.toLowerCase().includes('catch') || next.description.toLowerCase().includes('chase')) {
       hint = `Find the SUSPECT (red marker), hold SHIFT to sprint, and run straight into them to tackle.`;
     } else if (next.description.toLowerCase().includes('search') || next.description.toLowerCase().includes('find')) {
