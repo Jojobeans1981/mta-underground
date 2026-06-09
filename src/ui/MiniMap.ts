@@ -102,11 +102,13 @@ export class MiniMap {
 
       // Station name label — short name, positioned to avoid overlap
       const shortName = this.shortenName(station.name);
-      const nameLabel = scene.add.text(stX, stY + 5, shortName, {
-        fontSize: '5px',
-        color: '#aaaacc',
+      const nameLabel = scene.add.text(stX, stY + 4, shortName, {
+        fontSize: '7px',
+        color: '#c2c2e0',
         fontStyle: 'bold',
         align: 'center',
+        stroke: '#000000',
+        strokeThickness: 1,
       }).setOrigin(0.5, 0);
       this.container.add(nameLabel);
     }
@@ -155,8 +157,8 @@ export class MiniMap {
     });
 
     // Hint label
-    const mapLabel = scene.add.text(MINIMAP_SIZE / 2, MINIMAP_SIZE + 4, 'TAB — FULL MAP', {
-      fontSize: '5px', color: '#444466', fontStyle: 'bold',
+    const mapLabel = scene.add.text(MINIMAP_SIZE / 2, MINIMAP_SIZE + 5, 'TAB — FULL MAP', {
+      fontSize: '7px', color: '#6666aa', fontStyle: 'bold',
     }).setOrigin(0.5);
     this.container.add(mapLabel);
   }

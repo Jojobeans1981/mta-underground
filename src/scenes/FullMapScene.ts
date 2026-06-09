@@ -42,8 +42,8 @@ export class FullMapScene extends Phaser.Scene {
     mapBg.setStrokeStyle(1, hexToNum(COLOR_UI_PRIMARY), 0.4);
 
     // Title
-    const title = this.add.text(width / 2, 16, `TRANSIT MAP — ${district.name.toUpperCase()}`, {
-      fontSize: '14px',
+    const title = this.add.text(width / 2, 18, `TRANSIT MAP — ${district.name.toUpperCase()}`, {
+      fontSize: '24px',
       color: COLOR_UI_PRIMARY,
       fontStyle: 'bold',
     }).setOrigin(0.5);
@@ -84,7 +84,7 @@ export class FullMapScene extends Phaser.Scene {
       const lmRect = this.add.rectangle(lx, ly, Math.max(lw, 8), Math.max(lh, 8), 0x334455, 0.3);
       lmRect.setStrokeStyle(0.5, 0x556677, 0.3);
       const lmLabel = this.add.text(lx, ly + Math.max(lh, 8) / 2 + 3, lm.name, {
-        fontSize: '7px', color: '#556677', align: 'center',
+        fontSize: '12px', color: '#7a8aa0', align: 'center',
       }).setOrigin(0.5, 0);
     }
 
@@ -123,28 +123,32 @@ export class FullMapScene extends Phaser.Scene {
       const dot = this.add.circle(sx, sy, 5, hexToNum(COLOR_UI_PRIMARY), 0.8);
       dot.setStrokeStyle(1.5, 0xffffff, 0.6);
 
-      // Line color indicators (small squares showing which lines stop here)
+      // Line "bullets" — colored circles with the real line label, like the real map
       const stationLines = subwayLines.filter(l => l.stationIds.includes(station.id));
       for (let li = 0; li < stationLines.length; li++) {
         const lineColor = hexToNum(stationLines[li].color);
-        const indicator = this.add.rectangle(
-          sx + 8 + li * 7, sy - 2, 5, 5, lineColor, 0.9
-        );
-        indicator.setStrokeStyle(0.5, 0xffffff, 0.4);
+        const bx = sx + 12 + li * 20;
+        const bullet = this.add.circle(bx, sy - 2, 8, lineColor, 1);
+        bullet.setStrokeStyle(1, 0xffffff, 0.5);
+        this.add.text(bx, sy - 2, stationLines[li].name, {
+          fontSize: '9px', color: '#ffffff', fontStyle: 'bold',
+        }).setOrigin(0.5);
       }
 
       // Station name
-      const nameLabel = this.add.text(sx, sy + 10, station.name, {
-        fontSize: '9px',
-        color: '#ddddee',
+      const nameLabel = this.add.text(sx, sy + 12, station.name, {
+        fontSize: '17px',
+        color: '#eef0ff',
         fontStyle: 'bold',
         align: 'center',
+        stroke: '#000000',
+        strokeThickness: 3,
       }).setOrigin(0.5, 0);
 
       // Connections count
       if (station.connections.length > 0) {
-        this.add.text(sx, sy + 20, `${station.connections.length} connection${station.connections.length > 1 ? 's' : ''}`, {
-          fontSize: '6px', color: '#666688',
+        this.add.text(sx, sy + 32, `${station.connections.length} connection${station.connections.length > 1 ? 's' : ''}`, {
+          fontSize: '11px', color: '#8888aa',
         }).setOrigin(0.5, 0);
       }
     }
@@ -170,30 +174,30 @@ export class FullMapScene extends Phaser.Scene {
       playerMarker.setStrokeStyle(1.5, 0xffffff, 0.8);
 
       // "YOU" label
-      this.add.text(px, py - 10, 'YOU', {
-        fontSize: '7px', color: '#00e5ff', fontStyle: 'bold',
+      this.add.text(px, py - 12, 'YOU', {
+        fontSize: '13px', color: '#00e5ff', fontStyle: 'bold',
+        stroke: '#000000', strokeThickness: 3,
       }).setOrigin(0.5, 1);
     }
 
     // === LEGEND ===
-    const legendY = height - 18;
-    const legendItems: { label: string; color: string }[] = [];
-    for (const line of subwayLines) {
-      legendItems.push({ label: `${line.name} Train`, color: line.color });
-    }
-
+    const legendY = height - 22;
     let legendX = padding;
-    for (const item of legendItems) {
-      const swatch = this.add.rectangle(legendX, legendY, 8, 8, hexToNum(item.color), 0.8);
-      const label = this.add.text(legendX + 7, legendY, item.label, {
-        fontSize: '7px', color: '#888899',
+    for (const line of subwayLines) {
+      const bullet = this.add.circle(legendX + 7, legendY, 9, hexToNum(line.color), 1);
+      bullet.setStrokeStyle(1, 0xffffff, 0.5);
+      this.add.text(legendX + 7, legendY, line.name.split('·')[0], {
+        fontSize: '10px', color: '#ffffff', fontStyle: 'bold',
+      }).setOrigin(0.5);
+      const label = this.add.text(legendX + 20, legendY, `${line.name} Train`, {
+        fontSize: '13px', color: '#aab',
       }).setOrigin(0, 0.5);
-      legendX += label.width + 20;
+      legendX += label.width + 36;
     }
 
     // Close hint
     this.add.text(width - padding, legendY, 'Press TAB or ESC to close', {
-      fontSize: '7px', color: '#555566',
+      fontSize: '12px', color: '#667',
     }).setOrigin(1, 0.5);
 
     // === CLOSE HANDLERS ===

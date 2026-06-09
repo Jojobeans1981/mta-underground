@@ -337,14 +337,14 @@ export class NPC extends Entity {
   showBubble(text: string): void {
     if (!this.scene) return;
     this.hideBubble();
-    const bubble = this.scene.add.text(0, -9, text, {
-      fontSize: '18px',
+    const bubble = this.scene.add.text(0, -11, text, {
+      fontSize: '22px',
       color: '#ffffff',
       align: 'center',
-      backgroundColor: '#000000cc',
-      padding: { x: 6, y: 3 },
-      wordWrap: { width: 320 },
-    }).setOrigin(0.5, 1).setScale(0.11).setDepth(70);
+      backgroundColor: '#000000d9',
+      padding: { x: 7, y: 4 },
+      wordWrap: { width: 300 },
+    }).setOrigin(0.5, 1).setScale(0.2).setDepth(70);
     this.add(bubble);
     this.speechBubble = bubble;
     this.bubbleTimer = 2.6 + Math.min(text.length, 60) * 0.03;
@@ -393,13 +393,13 @@ export class NPC extends Entity {
       if (this.nameTag.text !== name) this.nameTag.setText(name);
       return;
     }
-    const tag = this.scene.add.text(0, -7, name, {
-      fontSize: '16px',
+    const tag = this.scene.add.text(0, -9, name, {
+      fontSize: '18px',
       color: '#ffe9a8',
       align: 'center',
-      backgroundColor: '#00000099',
-      padding: { x: 4, y: 1 },
-    }).setOrigin(0.5, 1).setScale(0.085).setDepth(68).setAlpha(0);
+      backgroundColor: '#000000b3',
+      padding: { x: 5, y: 2 },
+    }).setOrigin(0.5, 1).setScale(0.13).setDepth(68).setAlpha(0);
     this.add(tag);
     this.nameTag = tag;
     this.scene.tweens.add({ targets: tag, alpha: 0.9, duration: 200 });
