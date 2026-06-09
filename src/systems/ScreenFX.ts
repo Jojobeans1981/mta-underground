@@ -14,6 +14,7 @@ export class ScreenFX {
   private scanLines: Phaser.GameObjects.Graphics | null = null;
   private slowMoActive: boolean = false;
   private slowMoTimer: number = 0;
+  private hitStopActive: boolean = false;
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
@@ -43,6 +44,25 @@ export class ScreenFX {
       this.vignetteGraphics.fillRect(0, 0, inset, height);
       this.vignetteGraphics.fillRect(width - inset, 0, inset, height);
     }
+  }
+
+  /**
+   * Brief freeze-frame on impact (hit-stop) — the punchiest feedback technique.
+   * Near-freezes the sim for `ms` real milliseconds, then restores. Makes
+   * catches/tackles/tags feel like they connect.
+   */
+  hitStop(ms: number = 80): void {
+    if (this.hitStopActive) return;
+    this.hitStopActive = true;
+    this.scene.time.timeScale = 0.001;
+    this.scene.physics.world.timeScale = 1000;
+    setTimeout(() => {
+      this.hitStopActive = false;
+      const sys = this.scene?.sys;
+      if (!sys || !sys.isActive()) return;
+      this.scene.time.timeScale = this.slowMoActive ? 0.3 : 1;
+      this.scene.physics.world.timeScale = this.slowMoActive ? 3 : 1;
+    }, ms);
   }
 
   /** Trigger slow-motion for N seconds */

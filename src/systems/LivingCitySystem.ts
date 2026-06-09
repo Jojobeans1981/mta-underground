@@ -265,9 +265,11 @@ export class LivingCitySystem {
     if (npc.resident) this.registry.recordMeeting(npc.resident, 8);
 
     const persona = npc.persona!;
-    const friend = npc.getRelationship() >= 30 ? ' (friendly)' : '';
+    const times = npc.resident?.timesMet ?? 1;
+    const tag = npc.getRelationship() >= 30 ? '  ★ friend'
+      : times > 1 ? `  · met ${times}x` : '';
     return {
-      name: `${persona.name} · ${persona.occupation}${friend}`,
+      name: `${persona.name} · ${persona.occupation}${tag}`,
       line,
       moodLabel: MOOD_LABEL[npc.mood],
     };

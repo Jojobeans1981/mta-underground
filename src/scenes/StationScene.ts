@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { Player } from '@/entities/Player';
 import { InputManager } from '@/managers/InputManager';
 import { MapManager } from '@/managers/MapManager';
+import { SaveManager } from '@/managers/SaveManager';
 import { StationRenderer } from '@/graphics/StationRenderer';
 import { Station } from '@/types/game.types';
 import { hexToNum, COLOR_UI_PRIMARY, COLOR_UI_SURFACE } from '@/graphics/colors';
@@ -52,8 +53,11 @@ export class StationScene extends Phaser.Scene {
 
     const width = this.cameras.main.width;
 
-    // Player spawns inside the room near the turnstiles; scaled up for the big interior
-    this.player = new Player(this, result.playerSpawn.x, result.playerSpawn.y, 'police');
+    // Player spawns inside the room near the turnstiles; scaled up for the big interior.
+    // Use the ACTUAL selected class so Riders/Drivers aren't rendered as a cop.
+    const saveManager = this.game.registry.get('saveManager') as SaveManager | undefined;
+    const playerClass = saveManager?.load()?.selectedClass ?? 'police';
+    this.player = new Player(this, result.playerSpawn.x, result.playerSpawn.y, playerClass);
     this.player.setScale(2.2);
     this.player.setDepth(100);
 

@@ -26,6 +26,8 @@ export class HUDScene extends Phaser.Scene {
   private notificationToast: NotificationToast | null = null;
   private fpsText: Phaser.GameObjects.Text | null = null;
   private escKey: Phaser.Input.Keyboard.Key | null = null;
+  private goalBanner: Phaser.GameObjects.Text | null = null;
+  private readonly DEFAULT_GOAL = 'GOAL: walk to a glowing station entrance and press E for a mission';
 
   constructor() {
     super({ key: 'HUDScene' });
@@ -63,6 +65,13 @@ export class HUDScene extends Phaser.Scene {
 
     // Notification toast
     this.notificationToast = new NotificationToast(this);
+
+    // Always-on GOAL banner (top-center) so the player always knows what to do
+    this.goalBanner = this.add.text(this.cameras.main.width / 2, 8, this.DEFAULT_GOAL, {
+      fontSize: '13px', color: '#ffe9a8', fontStyle: 'bold', align: 'center',
+      backgroundColor: '#000000aa', padding: { x: 10, y: 5 },
+      wordWrap: { width: this.cameras.main.width - 120 },
+    }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(996);
 
     // Pause button (top-left)
     const pauseBtn = this.add.text(HUD_PADDING, HUD_PADDING, '| |', {
@@ -103,6 +112,7 @@ export class HUDScene extends Phaser.Scene {
 
     this.game.events.on(GameEvents.MISSION_STARTED, (data: { mission: MissionDefinition }) => {
       this.missionTracker?.setMission(data.mission);
+      this.setGoal(data.mission.objectives[0]?.description ?? data.mission.title);
       this.radioDisplay?.showMessage(
         `Dispatch: ${data.mission.title} — ${data.mission.description}`,
         'urgent'
@@ -116,18 +126,23 @@ export class HUDScene extends Phaser.Scene {
         const obj = data.mission.objectives[idx];
         this.missionTracker?.updateObjective(idx, obj.count, obj.count, true);
       }
+      // Point the goal banner at the next objective
+      const nextObj = data.mission.objectives[idx + 1];
+      this.setGoal(nextObj ? nextObj.description : 'Final objective — finish the job!');
       this.radioDisplay?.showMessage('Objective complete. Good work, Officer.', 'normal');
       audioManager?.playSFX('radio_beep');
     });
 
     this.game.events.on(GameEvents.MISSION_COMPLETED, () => {
       this.missionTracker?.clear();
+      this.setGoal(this.DEFAULT_GOAL);
       this.radioDisplay?.showMessage('Mission complete. Return to base.', 'normal');
       audioManager?.playSFX('mission_complete');
     });
 
     this.game.events.on(GameEvents.MISSION_FAILED, (data: { reason: string }) => {
       this.missionTracker?.clear();
+      this.setGoal(this.DEFAULT_GOAL);
       this.radioDisplay?.showMessage(`Mission failed: ${data.reason}`, 'urgent');
       audioManager?.playSFX('mission_fail');
     });
@@ -178,6 +193,12 @@ export class HUDScene extends Phaser.Scene {
 
     // Ensure HUD renders on top
     this.scene.bringToTop();
+  }
+
+  /** Update the always-on top-center goal banner. */
+  private setGoal(text: string): void {
+    if (!this.goalBanner) return;
+    this.goalBanner.setText(text.toUpperCase().startsWith('GOAL') ? text : `GOAL: ${text}`);
   }
 
   private async loadAndLaunchScene(key: SceneKey, data?: any): Promise<void> {

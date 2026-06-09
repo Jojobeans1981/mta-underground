@@ -675,6 +675,7 @@ export class GameScene extends Phaser.Scene {
               this.floatingText?.screenAnnounce('SUSPECT SPOTTED!', '#ff4444', '24px');
               this.screenFX?.flashRed(0.1, 200);
               this.cameras.main.shake(100, 0.004);
+              this.audioManager?.playSFX('alert');
               this.game.events.emit('radio.hint',
                 'He\'s running! Hold SHIFT to sprint and run straight into him to tackle.');
             }
@@ -1416,7 +1417,7 @@ export class GameScene extends Phaser.Scene {
 
       this.comboSystem?.hit();
       this.streakAnnouncer?.hit();
-      this.dailyChallenges?.updateProgress('missions');
+      this.rewardDaily('missions');
 
       // Power-up drop from completed mission
       this.powerUpSystem?.spawnAt(this.player!.x + 15, this.player!.y);
@@ -1435,7 +1436,7 @@ export class GameScene extends Phaser.Scene {
       const moneyMult = this.powerUpSystem?.getMoneyMultiplier() ?? 1;
       const totalMoney = Math.floor((mission.rewards.money + mission.rewards.bonusMoney) * comboMult * moneyMult);
       this.economyManager.earn(totalMoney, mission.id);
-      this.dailyChallenges?.updateProgress('money', totalMoney);
+      this.rewardDaily('money', totalMoney);
 
       const totalXP = Math.floor((mission.rewards.xp + mission.rewards.bonusXp) * comboMult);
       this.progressionManager.addXP(totalXP, mission.id);
@@ -1500,16 +1501,45 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
+  /** Advance a daily challenge and actually PAY OUT its reward when completed. */
+  private rewardDaily(type: string, amount: number = 1): void {
+    const ch = this.dailyChallenges?.updateProgress(type, amount);
+    if (!ch) return;
+    const moneyMult = this.powerUpSystem?.getMoneyMultiplier() ?? 1;
+    const money = Math.floor(ch.reward.money * moneyMult);
+    this.economyManager?.earn(money, 'daily_challenge');
+    this.progressionManager?.addXP(ch.reward.xp, 'daily_challenge');
+    this.audioManager?.playSFX('money_earn');
+    this.floatingText?.screenAnnounce(`DAILY COMPLETE — ${ch.description}  +$${money}`, '#ffd700', '20px');
+  }
+
   private onNPCCaught(npcId: string): void {
     if (!this.player) return;
 
-    // === MEGA CATCH EFFECTS ===
-    this.particles?.catchExplosion(this.player.x, this.player.y);
-    this.screenFX?.slowMotion(1.5); // Bullet time!
-    this.screenFX?.flashWhite(0.15, 200);
-    this.cameras.main.shake(150, 0.008);
+    // Where the catch happened — fire effects ON the suspect, not the player
+    const caught = this.missionNPCs.find((n) => n.entityId === npcId);
+    const cx = caught?.x ?? this.player.x;
+    const cy = caught?.y ?? this.player.y;
+
+    // === CATCH FEEDBACK === punchy hit-stop + impact on the suspect
+    this.screenFX?.hitStop(90);
+    this.particles?.catchExplosion(cx, cy);
+    this.screenFX?.flashWhite(0.18, 160);
+    this.cameras.main.shake(160, 0.01);
     this.audioManager?.playSFX('catch_npc');
-    this.cinematicCamera?.catchCam(this.player.x, this.player.y);
+    this.cinematicCamera?.catchCam(cx, cy);
+
+    // Suspect reacts to being tackled — quick knockback punch
+    if (caught) {
+      this.tweens.add({
+        targets: caught, scaleX: 1.4, scaleY: 0.7,
+        duration: 90, yoyo: true, ease: 'Quad.easeOut',
+      });
+    }
+
+    // Full bullet-time only for hot streaks, so it stays special and doesn't drag
+    const earlyMult = this.comboSystem?.getMultiplier() ?? 1;
+    if (earlyMult >= 2) this.screenFX?.slowMotion(1.2);
 
     // ActionFeed entry
     const catchMult = this.comboSystem?.getMultiplier() ?? 1;
@@ -1521,14 +1551,14 @@ export class GameScene extends Phaser.Scene {
     this.comboSystem?.hit();
     this.streakAnnouncer?.hit();
     this.wantedSystem?.addHeat(25);
-    this.dailyChallenges?.updateProgress('npcs');
+    this.rewardDaily('npcs');
 
-    // Floating text
+    // Floating text — at the suspect
     const mult = this.comboSystem?.getMultiplier() ?? 1;
     if (mult > 1) {
-      this.floatingText?.combo(this.player.x, this.player.y, mult);
+      this.floatingText?.combo(cx, cy, mult);
     }
-    this.floatingText?.spawn(this.player.x, this.player.y - 15, 'CAUGHT!', '#ff6f00', '6px');
+    this.floatingText?.spawn(cx, cy - 15, 'CAUGHT!', '#ff6f00', '6px');
 
     // Chance to drop a power-up
     this.powerUpSystem?.spawnAt(this.player.x + 10, this.player.y + 5);
@@ -1613,7 +1643,7 @@ export class GameScene extends Phaser.Scene {
       this.player.setPosition(station.entrances[0].x, station.entrances[0].y - 15);
     }
 
-    this.dailyChallenges?.updateProgress('stations');
+    this.rewardDaily('stations');
     this.achievements?.tryUnlock('first_station');
 
     if (this.missionManager?.isActive() && this.patrolSystem?.getIsActive()) {

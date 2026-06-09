@@ -64,9 +64,10 @@ export const FARE_EVADER_DEFINITION: NPCDefinition = {
   id: 'fare_evader_base',
   type: 'fare_evader',
   spriteConfig: { shape: 'rect', primaryColor: '#c62828', secondaryColor: '#b71c1c', size: 10 },
-  // Slower than the player's 120 walk (and far below the 180 sprint) so the gap
-  // always closes — the chase is winnable without perfect stamina management.
-  speed: 110,
+  // Faster than the player's 120 walk but below the 180 sprint, so catching a
+  // suspect REQUIRES sprinting (and managing stamina) — a real skill test, not
+  // a guaranteed walk-up. Tune via WantedSystem difficulty for higher stars.
+  speed: 140,
   behaviorPattern: 'flee',
   interactable: false,
   dialogueLines: [],
